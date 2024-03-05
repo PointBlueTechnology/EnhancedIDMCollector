@@ -1,0 +1,17 @@
+<component name="ArtifactManager">
+  <artifact name="EnhancedEntitlementCollector:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/EnhancedEntitlementCollector_jar</output-path>
+    <root id="root">
+      <element id="archive" name="EnhancedEntitlementCollector.jar">
+        <element id="module-output" name="EnhancedEntitlementCollector" />
+      </element>
+      <element id="file-copy" path="$USER_HOME$/Dev/igCollectorDependencies/ldap.jar" />
+      <element id="file-copy" path="$USER_HOME$/Dev/igCollectorDependencies/dirxml_misc.jar" />
+      <element id="file-copy" path="$USER_HOME$/Dev/igCollectorDependencies/XDS-4.8.0.0.jar" />
+      <element id="file-copy" path="$USER_HOME$/Dev/igCollectorDependencies/DaaS-SDKServer.jar" />
+      <element id="file-copy" path="$USER_HOME$/Dev/igCollectorDependencies/jettison-1.3.7.jar" />
+      <element id="file-copy" path="$USER_HOME$/Dev/igCollectorDependencies/slf4j-api-1.7.22.jar" />
+      <element id="file-copy" path="$USER_HOME$/Dev/igCollectorDependencies/logging-common-1.4.2-57.jar" />
+    </root>
+  </artifact>
+</component>

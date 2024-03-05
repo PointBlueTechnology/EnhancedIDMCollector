@@ -1,0 +1,298 @@
+{
+  "data-source-name": "EnhanceIDMAccountCollector",
+  "collector-name": "account",
+  "collectorType": "ACCOUNT",
+  "service-identifier": "EnhancedIDMAccountCollector-14-22-f442052d96b64a7b82f19bc4933e60f5",
+  "class": "com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService",
+  "allow-connection-test": true,
+  "version": "4.2.0",
+  "ecma-scripts": [],
+  "service-parms": [
+    {
+      "name": "use_bridge_connector",
+      "display-name": "Use Cloud Bridge connector?",
+      "description": "Select 'No' if the collector will connect directly to the Identity Manager system.	Select 'Yes' if the collector will access Identity Manager via the Cloud Bridge.",
+      "data-type": "string",
+      "default-value": 0,
+      "value": 0,
+      "required": true,
+      "options": [
+        {
+          "display-name": "Yes",
+          "value": 1
+        },
+        {
+          "display-name": "No",
+          "value": 0
+        }
+      ],
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "data_source_conn_id",
+      "display-name": "Select a Cloud Bridge Data Source Connection",
+      "description": "Choose the Cloud Bridge Data Source Connection that provides connectivity for this collector",
+      "data-type": "string",
+      "default-value": 0,
+      "value": 0,
+      "required": true,
+      "hidden": true,
+      "options": [
+        {
+          "display-name": "(Select a Data Source Connection)",
+          "value": 0
+        }
+      ],
+      "conditional_param": {
+        "use_bridge_connector": 1
+      },
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "server",
+      "display-name": "Host",
+      "description": "IP or DNS address of IDM Identity Vault Server",
+      "data-type": "string",
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "port",
+      "display-name": "Port",
+      "description": "LDAP Service Port Number",
+      "data-type": "numeric",
+      "default-value": 636,
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "security-certificate",
+      "display-name": "Server Certificate",
+      "description": "Base-64 encoded certificate from target IDM Identity Vault Server",
+      "data-type": "string",
+      "default-value": "",
+      "required": false,
+      "conn-parms": "[\"server\",\"port\"]",
+      "certificate-parm": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "entitlement_dn",
+      "display-name": "Entitlement Distinguished Name",
+      "description": "LDAP Distinguished Name of Entitlement in IDM Driver",
+      "data-type": "string",
+      "default-value": "",
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "driver-name",
+      "display-name": "Driver Distinguished Name",
+      "description": "LDAP Distinguished Name of IDM Driver",
+      "data-type": "string",
+      "default-value": "",
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "dxml-search-class",
+      "display-name": "Object Class",
+      "description": "Object class for default query",
+      "data-type": "string",
+      "default-value": "User",
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "custom-query",
+      "display-name": "Custom Query",
+      "description": "Custom query to be used for collection",
+      "data-type": "string",
+      "default-value": "",
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "chunk-request-ttl",
+      "display-name": "Batch Collection Session Timeout Value",
+      "description": "Number of seconds of idle time before a batched collection session is terminated",
+      "data-type": "numeric",
+      "default-value": 60,
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "page-size-limit",
+      "display-name": "Batch Size Limit",
+      "description": "Maximum Paged Response Size",
+      "data-type": "numeric",
+      "default-value": 1000,
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    },
+    {
+      "name": "ldap-read-timeout",
+      "display-name": "Driver Query Session Timeout Value",
+      "description": "Number of seconds before a driver query session is terminated",
+      "data-type": "numeric",
+      "default-value": 60,
+      "required": true,
+      "options": null,
+      "data_source_connection_parm": false
+    }
+  ],
+  "views": [
+    {
+      "name": "account",
+      "display-name": "Account",
+      "collection-required": true,
+      "collect": true,
+      "input-transforms": [],
+      "view-parms": [
+        {
+          "name": "search-class",
+          "description": "Collect the full IDM Role, Resource, and Entitlement Account Model",
+          "required": true,
+          "hidden": true,
+          "value": "Account",
+          "display-name": "IDM Account Collection",
+          "default-value": "Account",
+          "data-type": "string"
+        }
+      ],
+      "schema-map-filter": {
+        "generic-map": [
+          {
+            "view-name": "accountId",
+            "app-name": "association",
+            "required": true,
+            "hidden": false
+          },
+          {
+            "view-name": "description",
+            "app-name": "description",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "name",
+            "app-name": "displayName",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "userLink",
+            "app-name": "GUID",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "type",
+            "app-name": "entitlementDn",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "disabled",
+            "app-name": "loginDisabled",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "userId",
+            "app-name": "entryDn",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "idmAccountId",
+            "app-name": "id",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "logicalId",
+            "app-name": "liid",
+            "required": false,
+            "hidden": false
+          },
+          {
+            "view-name": "aliases",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "connAcctId",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "lastLogin",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "privileged",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "state",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "collectedUsersOwners",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "cost",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "risk",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          },
+          {
+            "view-name": "driverId",
+            "app-name": "",
+            "required": false,
+            "read-only-mapping": false,
+            "hidden": false
+          }
+        ]
+      },
+      "do_test_collection": true,
+      "test_collection_size": 0,
+      "raw_test_collection": true
+    }
+  ]
+}

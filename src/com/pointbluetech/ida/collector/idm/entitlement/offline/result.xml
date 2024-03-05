@@ -1,0 +1,76 @@
+
+        <nds>
+            <output>
+<instance class-name="SafePermission" event-id="IG:query" src-dn="PasswordManager1_workspace:updateAccountProperties">
+    <association>PasswordManager1_workspace:updateAccountProperties</association>
+    <attr attr-name="id">
+        <value type="string">PasswordManager1_workspace:updateAccountProperties</value>
+    </attr>
+    <attr attr-name="containerId">
+        <value type="string">PasswordManager1_workspace</value>
+    </attr>
+    <attr attr-name="containerName">
+        <value type="string">PasswordManager1_workspace</value>
+    </attr>
+    <attr attr-name="containerDisplayName">
+        <value type="string">PasswordManager1_workspace</value>
+    </attr>
+    <attr attr-name="name">
+        <value type="string">PasswordManager1_workspace:updateAccountProperties</value>
+    </attr>
+    <attr attr-name="right">
+        <value type="string">updateAccountProperties</value>
+    </attr>
+    <attr attr-name="displayName">
+        <value type="string">PasswordManager1_workspace - updateAccountProperties</value>
+    </attr>
+    <attr attr-name="subject">
+        <value type="string">83</value>
+    </attr>
+    <attr attr-name="subjectUser">
+        <value type="string">83</value>
+    </attr>
+    <attr attr-name="memberType">
+        <value type="string">User</value>
+    </attr>
+    <operation-data ig-account-collection-query="false" ig-collection-query="true"/>
+</instance>
+<instance class-name="SafePermission" event-id="IG:query" src-dn="PasswordManager1_workspace:initiateCPMAccountManagementOperations">
+<association>PasswordManager1_workspace:initiateCPMAccountManagementOperations</association>
+<attr attr-name="id">
+    <value type="string">PasswordManager1_workspace:initiateCPMAccountManagementOperations</value>
+</attr>
+<attr attr-name="containerId">
+    <value type="string">PasswordManager1_workspace</value>
+</attr>
+<attr attr-name="containerName">
+    <value type="string">PasswordManager1_workspace</value>
+</attr>
+<attr attr-name="containerDisplayName">
+    <value type="string">PasswordManager1_workspace</value>
+</attr>
+<attr attr-name="name">
+    <value type="string">PasswordManager1_workspace:initiateCPMAccountManagementOperations</value>
+</attr>
+<attr attr-name="right">
+    <value type="string">initiateCPMAccountManagementOperations</value>
+</attr>
+<attr attr-name="displayName">
+    <value type="string">PasswordManager1_workspace - initiateCPMAccountManagementOperations</value>
+</attr>
+<attr attr-name="subject">
+    <value type="string">83</value>
+</attr>
+<attr attr-name="subjectUser">
+    <value type="string">83</value>
+</attr>
+<attr attr-name="memberType">
+    <value type="string">User</value>
+</attr>
+<operation-data ig-account-collection-query="false" ig-collection-query="true"/>
+</instance>
+<status event-id="IG:query" level="success">
+<operation-data ig-account-collection-query="false" ig-collection-query="true"/>
+</status>
+        </output>
+        </nds>

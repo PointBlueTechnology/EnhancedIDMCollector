@@ -1,0 +1,362 @@
+{
+  "service-identifier": "EnhancedIDMPermissionCollectorV3",
+  "version": "4.2.0",
+  "collectorType": "PERMISSION",
+  "class": "com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService",
+  "allow-connection-test": true,
+  "service-parms": [
+    {
+      "data_source_connection_parm": false,
+      "name": "use_bridge_connector",
+      "display-name": "Use Cloud Bridge connector?",
+      "description": "Select 'No' if the collector will connect directly to the Identity Manager system.  Select 'Yes' if the collector will access Identity Manager via the Cloud Bridge.",
+      "data-type": "numeric",
+      "default-value": 0,
+      "required": true,
+      "options": [
+        {
+          "value": 1,
+          "display-name": "Yes"
+        },
+        {
+          "value": 0,
+          "display-name": "No"
+        }
+      ]
+    },
+    {
+      "conditional_param": {
+        "use_bridge_connector": 1
+      },
+      "data_source_connection_parm": false,
+      "name": "data_source_conn_id",
+      "display-name": "Select a Cloud Bridge Data Source Connection",
+      "description": "Choose the Cloud Bridge Data Source Connection that provides connectivity for this collector",
+      "data-type": "numeric",
+      "default-value": 0,
+      "required": true,
+      "options": [
+        {
+          "value": 0,
+          "display-name": "(Select a Data Source)"
+        }
+      ]
+    },
+    {
+      "data_source_connection_parm": false,
+      "name": "server",
+      "display-name": "Host",
+      "description": "IP or DNS address of IDM Identity Vault Server",
+      "data-type": "string",
+      "required": true
+    },
+    {
+      "data_source_connection_parm": false,
+      "name": "port",
+      "display-name": "Port",
+      "description": "LDAP Service Port Number",
+      "data-type": "numeric",
+      "required": true,
+      "default-value": 636
+    },
+    {
+      "conditional_param": {
+        "use_bridge_connector": 0
+      },
+      "data_source_connection_parm": true,
+      "name": "user",
+      "display-name": "User Name",
+      "description": "LDAP-format User name used to connect to IDM Identity Vault Server",
+      "data-type": "string",
+      "required": true,
+      "default-value": "cn=admin,ou=sa,o=system",
+      "credential-type": "user",
+      "credential-position": 0
+    },
+    {
+      "conditional_param": {
+        "use_bridge_connector": 0
+      },
+      "data_source_connection_parm": true,
+      "name": "password",
+      "display-name": "Password",
+      "description": "Password",
+      "data-type": "password",
+      "required": true,
+      "pwd_parms": "[\"server\",\"port\"]",
+      "credential-type": "password",
+      "credential-position": 0
+    },
+    {
+      "data_source_connection_parm": false,
+      "name": "security-certificate",
+      "display-name": "Server Certificate",
+      "description": "Base-64 encoded certificate from target IDM Identity Vault Server",
+      "data-type": "string",
+      "required": false,
+      "certificate-parm": true,
+      "conn-parms": "[\"server\",\"port\"]",
+      "default-value": ""
+    },
+    {
+      "name": "driver-name",
+      "display-name": "Driver Distinguished Name",
+      "description": "LDAP Distinguished Name of IDM Driver",
+      "data-type": "string",
+      "default-value": "",
+      "required": true
+    },
+    {
+      "data_source_connection_parm": false,
+      "name": "entitlement_dn",
+      "display-name": "Entitlement Distinguished Name",
+      "description": "LDAP Distinguished Name of Entitlement in IDM Driver",
+      "data-type": "string",
+      "required": true,
+      "default-value": ""
+    },
+
+    {
+      "name": "dxml-search-class",
+      "display-name": "Object Class",
+      "description": "Object class for default query",
+      "data-type": "string",
+      "default-value": "User",
+      "required": true
+    },
+    {
+      "name": "custom-query",
+      "display-name": "Custom Query",
+      "description": "Custom query to be used for collection",
+      "data-type": "string",
+      "default-value": "",
+      "required": false
+
+    },
+    {
+      "data_source_connection_parm": false,
+      "name": "chunk-request-ttl",
+      "display-name": "Batch Collection Session Timeout Value",
+      "description": "Number of seconds of idle time before a batched collection session is terminated",
+      "data-type": "numeric",
+      "required": true,
+      "default-value": 60
+    },
+    {
+      "data_source_connection_parm": false,
+      "name": "page-size-limit",
+      "display-name": "Batch Size Limit",
+      "description": "Maximum Paged Response Size",
+      "data-type": "numeric",
+      "required": true,
+      "default-value": 1000
+    },
+    {
+      "data_source_connection_parm": false,
+      "name": "ldap-read-timeout",
+      "display-name": "Driver Query Session Timeout Value",
+      "description": "Number of seconds before a driver query session is terminated",
+      "data-type": "numeric",
+      "required": true,
+      "default-value": 60
+    }
+  ],
+  "ecma-scripts": [
+  ],
+  "views": [
+    {
+      "name": "permission",
+      "display-name": "Permission",
+      "allow-collection-test": true,
+      "collection-required": true,
+      "collect": true,
+      "view-parms": [
+        {
+          "name": "search-class",
+          "display-name": "IDM Permission Collection",
+          "description": "Collect the full IDM Role, Resource, and Entitlement Permission Model",
+          "data-type": "string",
+          "required": true,
+          "default-value": "permission",
+          "hidden": true
+        },
+        {
+          "name": "view-dxml-search-class",
+          "display-name": "Object Class",
+          "description": "Object class for default query",
+          "data-type": "string",
+          "default-value": "User",
+          "required": true
+        },
+        {
+          "name": "view-custom-query",
+          "display-name": "Custom Query",
+          "description": "Custom query to be used for collection",
+          "data-type": "string",
+          "default-value": "",
+          "required": false
+
+        }
+      ],
+      "input-transforms": [
+      ],
+      "schema-map-filter": {
+        "generic-map": [
+          {
+            "view-name": "permissionId",
+            "app-name": "id",
+            "required": true,
+            "read-only": true,
+            "hidden": false
+          },
+          {
+            "view-name": "provNativeValue",
+            "app-name": "id2",
+            "required": false,
+            "read-only": true,
+            "hidden": false
+          },
+          {
+            "view-name": "logicalId",
+            "app-name": "liid",
+            "required": false,
+            "read-only": true,
+            "hidden": false
+          },
+          {
+            "view-name": "description",
+            "app-name": "description",
+            "required": false,
+            "read-only": true,
+            "hidden": false
+          },
+          {
+            "view-name": "name",
+            "app-name": "displayName",
+            "required": false,
+            "read-only": true,
+            "hidden": false
+          },
+          {
+            "view-name": "holderLink",
+            "app-name": "association",
+            "required": false,
+            "read-only": true,
+            "hidden": false
+          },
+          {
+            "view-name": "type",
+            "app-name": "entitlementDn",
+            "required": false,
+            "read-only": true,
+            "hidden": false
+          }
+        ]
+      }
+    },
+    {
+      "name": "permission_hierarchy_to_child",
+      "display-name": "Permission hierarchy based on parent to child",
+      "allow-collection-test": true,
+      "collection-required": false,
+      "collect": false,
+      "view-parms": [
+        {
+          "name": "search-class",
+          "display-name": "IDM Permission Collection",
+          "description": "Collect the full IDM Role, Resource, and Entitlement Permission Model",
+          "data-type": "string",
+          "required": true,
+          "default-value": "permission",
+          "hidden": true
+        },
+        {
+          "name": "view-dxml-search-class",
+          "display-name": "Object Class",
+          "description": "Object class for default query",
+          "data-type": "string",
+          "default-value": "User",
+          "required": true
+        },
+        {
+          "name": "view-custom-query",
+          "display-name": "Custom Query",
+          "description": "Custom query to be used for collection",
+          "data-type": "string",
+          "default-value": "",
+          "required": false
+
+        }
+
+      ],
+      "input-transforms": [
+      ],
+      "schema-map-filter": {
+        "generic-map": [{
+          "view-name": "parentPermissionId",
+          "app-name": "permissionId",
+          "required": true,
+          "read-only": true
+        },
+          {
+            "view-name": "childPermissionId",
+            "app-name": "childPermissionId",
+            "required": true,
+            "read-only": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "permission_hierarchy_to_parent",
+      "display-name": "Permission hierarchy based on child to parent",
+      "allow-collection-test": true,
+      "allow-view-parms-test": true,
+      "collection-required": false,
+      "collect": false,
+      "view-parms": [{
+        "name": "search-class",
+        "display-name": "IDM Permission Collection",
+        "description": "Collect the full IDM Role, Resource, and Entitlement Permission Model",
+        "data-type": "string",
+        "required": true,
+        "default-value": "permission",
+        "hidden": true
+      },
+        {
+          "name": "view-dxml-search-class",
+          "display-name": "Object Class",
+          "description": "Object class for default query",
+          "data-type": "string",
+          "default-value": "User",
+          "required": true
+        },
+        {
+          "name": "view-custom-query",
+          "display-name": "Custom Query",
+          "description": "Custom query to be used for collection",
+          "data-type": "string",
+          "default-value": "",
+          "required": false
+
+        }
+      ],
+      "input-transforms": [],
+      "schema-map-filter": {
+        "generic-map": [{
+          "view-name": "childPermissionId",
+          "app-name": "permissionId",
+          "required": true,
+          "read-only": true
+        },
+          {
+            "view-name": "parentPermissionId",
+            "app-name": "parentPermissionId",
+            "required": true,
+            "read-only": true
+          }
+        ]
+      }
+    }
+  ]
+}
