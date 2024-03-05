@@ -16,11 +16,14 @@
 
 package com.pointbluetech.ida.collector.idm.entitlement;
 
-import javax.net.ssl.*;
-import java.io.*;
-import java.net.*;
 import javax.net.SocketFactory;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class JndiSocketFactory extends SSLSocketFactory implements java.lang.Runnable
 {

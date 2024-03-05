@@ -80,13 +80,13 @@ public class TestJig {
             driverNameParam.put("name", "driver-name");
             driverNameParam.put("data-type", "string");
             driverNameParam.put("required", true);
-            driverNameParam.put("value", "cn=Active Directory Driver,cn=driverset1,o=system");
+            driverNameParam.put("value", "cn=CyberArk,cn=driverset1,o=system");
 
             JSONObject entNameParam = new JSONObject();
             entNameParam.put("name", "entitlement_dn");
             entNameParam.put("data-type", "string");
             entNameParam.put("required", true);
-            entNameParam.put("value", "cn=UserAccount,cn=Active Directory Driver,cn=driverset1,o=system");
+            entNameParam.put("value", "cn=Account,cn=CyberArk,cn=driverset1,o=system");
 
 
             JSONObject customQueryParam = new JSONObject();
@@ -131,7 +131,7 @@ customQueryParam.put("value", "");
             serviceParams.put(5, customQueryParam);
             serviceParams.put(6, entNameParam);
             serviceParams.put(7, collClassParam);
-
+            serviceParams.put(8, v_searchClassParam);
             configData.put("service-parms", serviceParams);
             //System.out.println(configData.getString(HOST_PARAM));
             configData.put("organization", "PointblueTechnology");
@@ -139,14 +139,14 @@ customQueryParam.put("value", "");
 
             //TODO: try it without this
             service.setConfigData("traceFileName", 3, "instanceID",configData);
-
-
+            JSONObject request = new JSONObject("{\"search-class\":\"permission\",\"view-dxml-search-class\":\"Entitlement\",\"view-custom-query\":\"\",\"read-attrs\":[\"entitlementAction\",\"holderId\",\"entitlementDn\"]}");
+            request.put(CommonImpl.DAAS_AUTH_ATTR, authInfo);
             service.serviceTest("cn=admin,ou=sa,o=system:dittibop");
+       // System.out.println(serviceParams.toString());
 
 
-        System.out.println(serviceParams.toString());
-
-            service.executeJSONChunkRequest(configData, null, 100);
+            JSONObject result = service.executeJSONChunkRequest(request, null, 100);
+            System.out.println(result.toString(2));
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -11,7 +11,7 @@
     {
       "name": "use_bridge_connector",
       "display-name": "Use Cloud Bridge connector?",
-      "description": "Select 'No' if the collector will connect directly to the Identity Manager system.	Select 'Yes' if the collector will access Identity Manager via the Cloud Bridge.",
+      "description": "Select 'No' if the collector will connect directly to the Identity Manager system. Select 'Yes' if the collector will access Identity Manager via the Cloud Bridge.",
       "data-type": "string",
       "default-value": 0,
       "value": 0,

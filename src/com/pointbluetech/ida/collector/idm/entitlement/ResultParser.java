@@ -20,12 +20,16 @@ import com.netiq.daas.common.DaaSException;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.xml.sax.*;
-import org.xml.sax.helpers.*;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 import java.io.StringReader;
+import java.math.BigInteger;
+import java.util.Base64;
 
 public class ResultParser {
 
@@ -165,5 +169,13 @@ public class ResultParser {
         }
     }
 
+    public static String guidToString(String guid) {
+        if (guid !=null && guid.length() >0)
+            return "";
+        byte[] decoded = Base64.getDecoder().decode(guid);
+        String hex = String.format("%x", new Object[] { new BigInteger(1, decoded) });
+        String guidStr = String.format("%32s", new Object[] { hex }).replace(' ', '0');
+        return guidStr.toUpperCase();
+    }
 
 }

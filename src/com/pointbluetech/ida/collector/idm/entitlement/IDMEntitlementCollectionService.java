@@ -237,7 +237,7 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
             // Build a standard DaaS reply
             int count = results.length();
 
-            resObj.put(CommonImpl.STATUS_TEXT, "RESULT COUNT: "+ Integer.toString(count));
+            resObj.put(CommonImpl.STATUS_TEXT, "RESULT COUNT: "+ count);
             resObj.put(CommonImpl.SIZE, count);
 
             if (m_collector.hasMore())

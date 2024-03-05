@@ -16,8 +16,9 @@
 
 package com.pointbluetech.ida.collector.idm.entitlement;
 
-import javax.net.ssl.*;
-import java.security.cert.*;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 
 
 /**

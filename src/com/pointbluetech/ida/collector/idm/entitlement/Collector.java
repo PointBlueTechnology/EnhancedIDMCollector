@@ -18,20 +18,14 @@ package com.pointbluetech.ida.collector.idm.entitlement;
 
 import com.netiq.daas.common.CommonImpl;
 import com.netiq.daas.common.DaaSException;
-import com.novell.nds.dirxml.driver.XmlDocument;
-import com.novell.nds.dirxml.driver.xds.XDSQueryDocument;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
 
 import javax.naming.NamingException;
 import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Hashtable;
 
@@ -249,15 +243,7 @@ public class Collector {
 
             byte[] xmlBytes = tokenDoc.getBytes(StandardCharsets.UTF_8);
 
-            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-            dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-            DocumentBuilder db = dbf.newDocumentBuilder();
-            Document doc = db.parse(new ByteArrayInputStream(xmlBytes));
-
-            XDSQueryDocument queryDoc = new XDSQueryDocument(new XmlDocument(doc));
-            LOGGER.debug("QueryDoc: " + queryDoc.domDocument());
-            return Utility.serializeXMLDocument(doc, true, true).getBytes();
+            return xmlBytes;
 
         } catch (Exception e)
         {
