@@ -35,16 +35,21 @@ public class ResultParser {
 
 
 
-
+    /**
+     * Parses the result of a query.
+     *
+     * @param result The result of the query.
+     * @param entitlementDn The distinguished name of the entitlement.
+     * @return A JSONArray representing the parsed result.
+     * @throws DaaSException If an error occurs during parsing.
+     */
     public  JSONArray parse(String result, String entitlementDn) throws DaaSException {
         try {
             InputSource is = new InputSource(new StringReader(result));
             SAXParserFactory factory = SAXParserFactory.newInstance();
             SAXParser saxParser = factory.newSAXParser();
 
-            //XMLReader xmlReader = saxParser.getXMLReader();
             QueryResultHandler handler = new QueryResultHandler();
-           // xmlReader.setContentHandler(handler);
             InputSource inputSource = new InputSource(new StringReader(result));
 
             handler.setEntitlementDn(entitlementDn);

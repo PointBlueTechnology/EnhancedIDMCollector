@@ -67,13 +67,16 @@ public class DirXMLClient {
     }
 
     /**
-     * This method checks if the driver is running.
-     * It sets up search controls and specifies the attribute to return ("DirXML-State").
-     * It then performs a search on the LDAP context using the driver's distinguished name and the search controls.
-     * The state of the driver is retrieved from the search results and checked if it equals 2 (indicating the driver is running).
+     * This method is used to submit an XDS command to the driver.
+     * It first prints out the driver's distinguished name, the LDAP read timeout, and the length of the XDS command.
+     * It then creates a SubmitCommandRequest with the driver's distinguished name, a timeout of 1, and the XDS command.
+     * If the driver is not running, it throws a DaaSException.
+     * If the driver is running, it sends the SubmitCommandRequest to the driver and retrieves the response.
+     * It then retrieves the response data in chunks and returns it.
      *
-     * @return true if the driver is running, false otherwise.
-     * @throws DaaSException if there is an error during the operation.
+     * @param xds The XDS command to be submitted.
+     * @return The response data from the driver.
+     * @throws DaaSException If the driver is not running or if there is an error during the operation.
      */
     public byte[] submitXDSCommand(byte[] xds) throws DaaSException {
         try {
