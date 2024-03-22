@@ -1,4 +1,4 @@
-This code implement a custom collector for Opentext/NetIQ [Identity Governance](https://www.opentext.com/products/identity-governance-and-administration). 
+This code implements a custom collector for Opentext/NetIQ [Identity Governance](https://www.opentext.com/products/identity-governance-and-administration). 
 It allows IG to to query account and permissions data from systems provisioned by the [Opentext/NetIQ Identity Manager](https://www.opentext.com/products/netiq-identity-manager) product.
 Queries are submitted to the Identity Manager (DirXML) engine and the results are returned to IG. This collector can be used in place of the IDM Entitlement Collector that ships with IG.
 The stock entitlement collector collects a limited set of attributes and only supports specific DirXML drivers. This collector is more generic and can be used with any DirXML driver.
