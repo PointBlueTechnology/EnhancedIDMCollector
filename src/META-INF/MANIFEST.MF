@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Main-Class: 
+Class-Path: ldap.jar dirxml_misc.jar XDS-4.8.0.0.jar DaaS-SDKServer.jar 
+ jettison-1.3.7.jar slf4j-api-1.7.22.jar logging-common-1.4.2-57.jar
+
