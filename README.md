@@ -1,8 +1,23 @@
-This is BETA code! Please don't use it in production yet. This code will be ready to release shortly and this repo will be made public.
+This code implement a custom collector for Opentext/NetIQ [Identity Governance](https://www.opentext.com/products/identity-governance-and-administration). 
+It allows IG to to query account and permissions data from systems provisioned by the [Opentext/NetIQ Identity Manager](https://www.opentext.com/products/netiq-identity-manager) product.
+Queries are submitted to the Identity Manager (DirXML) engine and the results are returned to IG. This collector can be used in place of the IDM Entitlement Collector that ships with IG.
+The stock entitlement collector collects a limited set of attributes and only supports specific DirXML drivers. This collector is more generic and can be used with any DirXML driver.
+This collector will work with the stock entitlement fulfillment code in IG if the appropriate attribute are mapped.
 
-No support of any kind is provided without seperate arrangement. 
+This code is provided as-is and is not supported by Opentext/NetIQ. Paid support for this code is available from [Idenhuas Consulting](https://idenhaus.com).
+If ypu would like to contribute to this project, please fork the repository and submit a pull request.
+Binary builds are available [here](https://software.pointbluetech.com/pb/oss/eec/v1.0/)
 
-Currently the driver needs to explicitly return an "id" attribute if you want to use the OOTB mappings provided by the stock entitlement collector. You will need to add this attribute via policy.
+Example use cases for this driver include:
+* Collecting accounts where you need more than association, id, description, and active status.
+* Collecting permission assignments in the connected system for a driver that is not using IDM entitlements.
+
+The collection process is shown in the following diagram:
+![Process Flow](ProcessFlow.png)
+
+
+
+Currently, the driver needs to explicitly return an "id" attribute if you want to use the OOTB mappings provided by the stock entitlement collector. You will need to add this attribute via policy if your driver shim does not return it.
 
 In addition to any attributes returned by the driver, this collector will add "association", "class", and "entitlementDn" to the returned JSON objects.
 The "id2" is the src-dn attribute of the instance. The "entitlementDn" is the dn configured in IG. This is returned because the stock fulfillment code depends on it.
@@ -14,24 +29,39 @@ If you enter only a search class, a basic DirXML query that includes no read-att
 If you enter a custom query, that query will be used.  Once again, this collector does not try to use any of the entitlement configuration from eDir when generating queries. 
 This is intentional.
 
-The stock entitlement collector transform the eDir GUID to a string. I intend to handle that in a collector transform instead to make this driver more generic. The stock driver applies this transform to any attribute named "GUID" which could possibly conflict. Suggestions on how to handle this are welcome.
+The stock entitlement collector transform the eDir GUID to a hex string. This collector does not do that. The GUID is returned as a Base64 encoded byte array. This is intentional.
+You can perform the transformation in the collector mapping using the following JavaScript code:
+```
+function guidToString(guid) {
+    if (guid != null && guid.length > 0) {
+        return "";
+    }
+    let decoded = Buffer.from(guid, 'base64');
+    let hex = decoded.toString('hex');
+    let guidStr = hex.padStart(32, '0');
+    return guidStr.toUpperCase();
+}
+outputValue = guidToString(inputValue);
+```
 
-This release does not validate the LDAP server certificate. This will be changed before release.
+
+
+This release requires LDAPS and does not validate the LDAP server certificate by default.
 
 The following dependencies are required to build the project:
 
-Daas-SDKServer.jar 
+* Daas-SDKServer.jar 
 
-dirxml_misc.jar
+* dirxml_misc.jar
 
-jettison-1.3.7.jar
+* jettison-1.3.7.jar
 
-ldap.jar
+* ldap.jar
 
-logging-common-1.4.2-57.jar
+* logging-common-1.4.2-57.jar
 
-slf4j-api-1.7.22.jar
+* slf4j-api-1.7.22.jar
 
-XDS-4.8.0.0.jar
+* XDS-4.8.0.0.jar
 
-All except the Daas SDK are availiable from IG 4.2.  The Daas SDK is had to find but it is linked from the IG 3.7 docs. You can satisfy the dependencies from the SDK with additional jars from IG 4.2 if you need to.
+All except the Daas SDK are available from IG 4.2.  The Daas SDK is had to find but it is linked from the IG 3.7 docs. You can satisfy the dependencies from the SDK with additional jars from IG 4.2 if you need to.
