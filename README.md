@@ -13,7 +13,7 @@ Example use cases for this driver include:
 * Collecting permission assignments in the connected system for a driver that is not using IDM entitlements.
 
 An example is collecting accounts from Active Directory and returning the lastLogon attribute. This attribute is not returned by the stock entitlement collector. Note that this value is transformed from the raw LDAP value using a collector transform.
-![ADLastLogon](ADLastLogon.png)
+![ADLastLogon](AdLastLogon.png)
 
 The full collection process is shown in the following diagram:
 ![Process Flow](ProcessFlow.png)
