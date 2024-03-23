@@ -70,10 +70,10 @@ public class ServiceParams {
     {
 
 
-        LOGGER.debug("request params"+jsonRequest.toString());
+        LOGGER.debug("Service Params"+jsonRequest.toString());
 
-        String collectionClass = CommonImpl.getServiceParamString(jsonRequest, "search-class", null);
-        if(collectionClass != null && collectionClass.equals("Account"))
+        String collectionClass = CommonImpl.validateRequestParamString(jsonRequest, "collectorType");
+        if(collectionClass != null && collectionClass.equals("ACCOUNT"))
         {
             accountCollection = true;
         }

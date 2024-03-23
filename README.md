@@ -12,7 +12,10 @@ Example use cases for this driver include:
 * Collecting accounts where you need more than association, id, description, and active status.
 * Collecting permission assignments in the connected system for a driver that is not using IDM entitlements.
 
-The collection process is shown in the following diagram:
+An example is collecting accounts from Active Directory and returning the lastLogon attribute. This attribute is not returned by the stock entitlement collector. Note that this value is transformed from the raw LDAP value using a collector transform.
+![ADLastLogon](ADLastLogon.png)
+
+The full collection process is shown in the following diagram:
 ![Process Flow](ProcessFlow.png)
 
 
@@ -30,19 +33,8 @@ If you enter a custom query, that query will be used.  Once again, this collecto
 This is intentional.
 
 The stock entitlement collector transform the eDir GUID to a hex string. This collector does not do that. The GUID is returned as a Base64 encoded byte array. This is intentional.
-You can perform the transformation in the collector mapping using the following JavaScript code:
-```
-function guidToString(guid) {
-    if (guid != null && guid.length > 0) {
-        return "";
-    }
-    let decoded = Buffer.from(guid, 'base64');
-    let hex = decoded.toString('hex');
-    let guidStr = hex.padStart(32, '0');
-    return guidStr.toUpperCase();
-}
-outputValue = guidToString(inputValue);
-```
+You can perform the transformation in the collector mapping 
+
 
 
 
