@@ -33,8 +33,55 @@ If you enter a custom query, that query will be used.  Once again, this collecto
 This is intentional.
 
 The stock entitlement collector transform the eDir GUID to a hex string. This collector does not do that. The GUID is returned as a Base64 encoded byte array. This is intentional.
-You can perform the transformation in the collector mapping 
+You can perform the transformation in the collector mapping using the following JavaScript code:
+```
+function base64DecodeToBytes(input) {
+	const keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+	let output = [];
+	let chr1, chr2, chr3;
+	let enc1, enc2, enc3, enc4;
+	let i = 0;
+	
+	input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+	
+	while (i < input.length) {
+		enc1 = keyStr.indexOf(input.charAt(i++));
+		enc2 = keyStr.indexOf(input.charAt(i++));
+		enc3 = keyStr.indexOf(input.charAt(i++));
+		enc4 = keyStr.indexOf(input.charAt(i++));
+		
+		chr1 = (enc1 << 2) | (enc2 >> 4);
+		chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+		chr3 = ((enc3 & 3) << 6) | enc4;
+		
+		output.push(chr1);
+		
+		if (enc3 != 64) {
+			output.push(chr2);
+		}
+		if (enc4 != 64) {
+			output.push(chr3);
+		}
+	}
+	
+	return output;
+}
 
+function guidToString(guid) {
+    if (!guid || guid.length === 0)
+        return "";
+
+    let decoded = base64DecodeToBytes(guid); // Use the base64DecodeToBytes function from previous conversation
+    let hex = '';
+    for (let i = 0; i < decoded.length; i++) {
+        let byte = decoded[i];
+        hex += ('0' + (byte & 0xFF).toString(16)).slice(-2);
+    }
+    let guidStr = hex.toUpperCase();
+    return guidStr;
+}
+outputValue = guidToString(inputValue);
+```
 
 
 

@@ -174,6 +174,8 @@ public class ResultParser {
         }
     }
 
+
+
     public static String guidToString(String guid) {
         if (guid !=null && guid.length() >0)
             return "";
