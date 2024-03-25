@@ -1,6 +1,6 @@
 {
   "service-identifier": "EnhancedIDMPermissionCollectorV3",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "collectorType": "PERMISSION",
   "class": "com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService",
   "allow-connection-test": true,
@@ -185,7 +185,7 @@
           "display-name": "Object Class",
           "description": "Object class for default query",
           "data-type": "string",
-          "default-value": "User",
+          "default-value": "Group",
           "required": true
         },
         {

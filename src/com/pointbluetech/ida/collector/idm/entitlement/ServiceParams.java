@@ -38,7 +38,7 @@ public class ServiceParams {
     private static final String ENT_NAME = "entitlement_dn";
 
     public static final String CERTIFICATE_PARAM = "service-cert";
-    public static final String CUSTOM_QUERY = "view-custom-query";
+    public static final String CUSTOM_QUERY = "custom-query";
 
 
     private int readTimeout =  600;

@@ -129,7 +129,7 @@
     },
     {
       "name": "custom-query",
-      "display-name": "Custom Query",
+      "display-name": "Custom Query (optional)",
       "description": "Custom query to be used for collection",
       "data-type": "string",
       "default-value": "",

@@ -103,4 +103,4 @@ The following dependencies are required to build the project:
 
 * XDS-4.8.0.0.jar
 
-All except the Daas SDK are available from IG 4.2.  The Daas SDK is had to find but it is linked from the IG 3.7 docs. You can satisfy the dependencies from the SDK with additional jars from IG 4.2 if you need to.
+All except the Daas SDK are available from IG 4.2.  The Daas SDK is hard to find but it is linked from the IG 3.7 docs. You can satisfy the dependencies from the SDK with additional jars from IG 4.2 if you need to.
