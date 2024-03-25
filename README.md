@@ -15,6 +15,8 @@ Example use cases for this driver include:
 An example is collecting accounts from Active Directory and returning the lastLogon attribute. This attribute is not returned by the stock entitlement collector. Note that this value is transformed from the raw LDAP value using a collector transform.
 ![ADLastLogon](AdLastLogon.png)
 
+See the example at [examples/Active Directory](examples/Active%20Directory) for more information on how to use this collector.
+
 The full collection process is shown in the following diagram:
 ![Process Flow](ProcessFlow.png)
 
