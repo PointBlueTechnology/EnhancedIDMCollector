@@ -139,8 +139,15 @@ public class Collector {
         //byte[] response = udClient.submitXDSEvent(m_viewParams.getDriverName(), queryXDS);
         byte[] response = udClient.submitXDSCommand( queryXDS);
 
-        //JSONArray results = Utility.parseResults(response, m_serviceParams);
-        return new ResultParser().parse(new String(response), m_serviceParams.getEntitlementName());
+        JSONArray results = new ResultParser().parse(new String(response), m_serviceParams.getEntitlementName());
+        try{
+        LOGGER.debug("Results: " + results.toString(2));
+        }catch (Exception e)
+        {
+            LOGGER.error("Error logging results", e);
+
+        }
+        return results;
 
 
 
