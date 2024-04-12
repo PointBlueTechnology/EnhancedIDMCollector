@@ -37,9 +37,9 @@ public class ServiceParams {
     private static final String DRIVER_NAME = "driver-name";
     private static final String ENT_NAME = "entitlement_dn";
 
-    public static final String CERTIFICATE_PARAM = "service-cert";
+    public static final String CERTIFICATE_PARAM = "security-certificate";
     public static final String CUSTOM_QUERY = "custom-query";
-
+    public static final String IDENTITY_MANAGER_ACCOUNT_ID = "idm-account-id";
 
     private int readTimeout =  600;
 
@@ -55,6 +55,12 @@ public class ServiceParams {
     private String customQuery;
 
     public boolean accountCollection = false;
+
+    public boolean trustAllCerts = true;
+
+    public String serverCertificate;
+
+    public String idmAccountID;
 
     static final Logger LOGGER = LoggerFactory.getLogger(ServiceParams.class.getName());
 
@@ -95,6 +101,13 @@ public class ServiceParams {
         LOGGER.debug("port: " + port);
         this.setEntitlementName(CommonImpl.validateServiceParamString(jsonRequest, ENT_NAME));
         LOGGER.debug("entitlementName: " + entitlementName);
+        this.trustAllCerts = CommonImpl.getServiceParamBoolean(jsonRequest, "trust-all-certs", true);
+        LOGGER.debug("trustAllCerts: " + trustAllCerts);
+        this.serverCertificate = CommonImpl.getServiceParamString(jsonRequest, CERTIFICATE_PARAM, null);
+        LOGGER.debug("serverCertificate: " + serverCertificate);
+        this.idmAccountID = CommonImpl.getServiceParamString(jsonRequest,"idm-account-id", "");
+        LOGGER.debug("idmAccountID: " + idmAccountID);
+
 
         this.setPageSizeLimit(CommonImpl.getServiceParamInt(jsonRequest, PAGE_SIZE_LIMIT, 0));
         LOGGER.debug("pageSizeLimit: " + pageSizeLimit);
@@ -148,6 +161,14 @@ public class ServiceParams {
         return driverName;
     }
 
+    public boolean getTrustAllCerts() {
+        return trustAllCerts;
+    }
+
+    public String getServerCertificate() {
+        return serverCertificate;
+    }
+
     public int getReadTimeout() {
         return readTimeout;
     }
@@ -178,6 +199,10 @@ public class ServiceParams {
 
     public String getCustomQuery() {
         return customQuery;
+    }
+
+    public String getIdmAccountID() {
+        return idmAccountID;
     }
 
 

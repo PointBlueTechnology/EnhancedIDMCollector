@@ -33,7 +33,10 @@ Currently, the driver needs to explicitly return an `id` attribute if you want t
 
 In addition to any attributes returned by the driver, this collector will add `association`, `class`, and `entitlementDn` to the returned JSON objects.
 The `id2` is the `src-dn` attribute of the instance. The `entitlementDn` is the dn configured in IG. This is returned because the stock fulfillment code depends on it.
-The `class` is the object class of the returned instance element.
+The `class` is the object class of the returned instance element. Note that you may need to update to the latest version of the Account Collector template.
+
+Fulfillment for Account provisioning requires an "IDM Account ID" attribute. This a static value that is used as the path portion of the DirXML-Entitlement DN. this value is used as the path portion of the DirXML-EntitlementRef value for account entitlements.
+For example, Active Directory uses the domain name. You can now configure a value for this attribute in Account Collector template. This value will be returned in the JSON as "idmAccountID". Feel free to map any other attribute to this value if you need to for you specific driver.
 
 This collector does NOT use the `entitlementDn` in any other way and the entitlement does not need to exist in eDirectory if you are only collecting data.
 

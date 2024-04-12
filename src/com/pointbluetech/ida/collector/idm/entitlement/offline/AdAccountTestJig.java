@@ -88,11 +88,25 @@ public class AdAccountTestJig {
             entNameParam.put("required", true);
             entNameParam.put("value", "cn=Account,cn=Active Directory Driver,cn=driverset1,o=system");
 
+            JSONObject idmAcctIdParam = new JSONObject();
+            idmAcctIdParam.put("name", "idm-account-id");
+            idmAcctIdParam.put("data-type", "string");
+            idmAcctIdParam.put("required", true);
+            idmAcctIdParam.put("value", "foo.com");
+
 
             JSONObject customQueryParam = new JSONObject();
             customQueryParam.put("name", "custom-query");
             customQueryParam.put("data-type", "string");
             customQueryParam.put("required", false);
+
+            JSONObject collectorType = new JSONObject();
+            collectorType.put("name", "collectorType");
+            collectorType.put("data-type", "string");
+            collectorType.put("required", false);
+            collectorType.put("value", "ACCOUNT");
+
+
             //customQueryParam.put("value", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?><nds dtdversion=\"2.0\"><input><query class-name=\"User\" event-id=\"IG:query\" scope=\"subtree\"><search-class class-name=\"User\"/><read-attr attr-name=\"dirxml-uACAccountDisable\"/><read-attr attr-name=\"userPrincipalName\"/><read-attr attr-name=\"sAMAccountName\"/><read-attr attr-name=\"given name\"/><read-attr attr-name=\"surname\"/><operation-data ig-account-collection-query=\"true\" ig-collection-query=\"true\"/></query></input></nds>");
 //           customQueryParam.put("value", "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?><nds dtdversion=\"2.0\"><input>" +
 //
@@ -132,9 +146,13 @@ customQueryParam.put("value", "");
             serviceParams.put(6, entNameParam);
             serviceParams.put(7, collClassParam);
             serviceParams.put(8, v_searchClassParam);
+            serviceParams.put(9, collectorType);
+            serviceParams.put(10, idmAcctIdParam);
             configData.put("service-parms", serviceParams);
             //System.out.println(configData.getString(HOST_PARAM));
             configData.put("organization", "PointblueTechnology");
+            configData.put("collectorType", "ACCOUNT");
+
 
 
             //TODO: try it without this

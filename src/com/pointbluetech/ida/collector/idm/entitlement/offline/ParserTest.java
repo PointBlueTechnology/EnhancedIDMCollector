@@ -36,7 +36,7 @@ public class ParserTest {
         XmlDocument resultDoc = getXdsDoc("/com/pointbluetech/ida/collector/idm/entitlement/offline/result.xml");
         ResultParser parser = new ResultParser();
         try {
-           JSONArray result = parser.parse(resultDoc.getDocumentString(), "entitlementsDNString");
+           JSONArray result = parser.parse(resultDoc.getDocumentString(), "entitlementsDNString", "idmAccountID-value");
             System.out.println(result.toString(2));
         } catch (Exception e) {
             e.printStackTrace();

@@ -43,7 +43,7 @@ public class ResultParser {
      * @return A JSONArray representing the parsed result.
      * @throws DaaSException If an error occurs during parsing.
      */
-    public  JSONArray parse(String result, String entitlementDn) throws DaaSException {
+    public  JSONArray parse(String result, String entitlementDn, String idmAccountID) throws DaaSException {
         try {
             InputSource is = new InputSource(new StringReader(result));
             SAXParserFactory factory = SAXParserFactory.newInstance();
@@ -53,6 +53,7 @@ public class ResultParser {
             InputSource inputSource = new InputSource(new StringReader(result));
 
             handler.setEntitlementDn(entitlementDn);
+            handler.setIdmAccountID(idmAccountID);
             saxParser.parse(is, handler);
             return handler.getResultArray();
         } catch (Exception e) {
@@ -75,6 +76,7 @@ public class ResultParser {
         String id;
         String id2;
         String className;
+        String idmAccountID;
 
         String attrName;
         private String entitlementDn;
@@ -117,6 +119,7 @@ public class ResultParser {
                     instance.put("class", className);
                     instance.put("association", association);
                     instance.put("entitlementDn", entitlementDn);
+                    instance.put("idmAccountID", idmAccountID);
                 } catch (JSONException e)
                 {
                     e.printStackTrace();
@@ -172,6 +175,12 @@ public class ResultParser {
         public void setEntitlementDn(String entitlementDn) {
             this.entitlementDn = entitlementDn;
         }
+
+        public void setIdmAccountID(String idmAccountID) {
+            this.idmAccountID = idmAccountID;
+        }
+
+
     }
 
 

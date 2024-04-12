@@ -71,7 +71,7 @@ public class Collector {
     public void setCollectionPageSize(int pageSize) throws DaaSException {
         if (pageSize < 0)
         {
-            throw new DaaSException("INVALID_PAGE_SIZE: " +Integer.toString(pageSize), CommonImpl.TYPE_INVALID_REQUEST, CommonImpl.STATUS_ERROR);
+            throw new DaaSException("INVALID_PAGE_SIZE: " + pageSize, CommonImpl.TYPE_INVALID_REQUEST, CommonImpl.STATUS_ERROR);
 
         }
 
@@ -113,12 +113,12 @@ public class Collector {
         //we are only going to do the query once
         //then we cache the results
         //page through them if needed
-        myLdapCTX = getLdapCtx(m_serviceParams.getHost(), m_user, m_password, true, m_serviceParams.getPort(), true);
+        myLdapCTX = getLdapCtx(m_serviceParams.getHost(), m_user, m_password, true, m_serviceParams.getPort(), m_serviceParams.getTrustAllCerts());
 
         DirXMLClient udClient = new DirXMLClient(myLdapCTX, m_serviceParams.getDriverName(), m_serviceParams.getReadTimeout());
 
 
-        byte[] queryXDS = null;
+        byte[] queryXDS;
         //We are going to send the search through to the DirXMLClient
         if(jsonRequest.optString("search-class").equals("Account"))
         {
@@ -139,7 +139,7 @@ public class Collector {
         //byte[] response = udClient.submitXDSEvent(m_viewParams.getDriverName(), queryXDS);
         byte[] response = udClient.submitXDSCommand( queryXDS);
 
-        JSONArray results = new ResultParser().parse(new String(response), m_serviceParams.getEntitlementName());
+        JSONArray results = new ResultParser().parse(new String(response), m_serviceParams.getEntitlementName(), m_serviceParams.getIdmAccountID());
         try{
         LOGGER.debug("Results: " + results.toString(2));
         }catch (Exception e)
@@ -171,7 +171,7 @@ public class Collector {
 
         try{
             LOGGER.debug("Testing connection");
-            LdapContext myLdapCTX = getLdapCtx(m_serviceParams.getHost(), m_user, m_password, true, m_serviceParams.getPort(), true);
+            LdapContext myLdapCTX = getLdapCtx(m_serviceParams.getHost(), m_user, m_password, true, m_serviceParams.getPort(), m_serviceParams.getTrustAllCerts());
             LOGGER.debug("Got LDAP Context");
 
             DirXMLClient udClient = new DirXMLClient(myLdapCTX, m_serviceParams.getDriverName(), m_serviceParams.getReadTimeout());
@@ -180,7 +180,6 @@ public class Collector {
             if(udClient.isDriverRunning())
             {
                 LOGGER.info("Driver is running");
-                return;
             }
             else
             {
@@ -248,9 +247,7 @@ public class Collector {
         try
         {
 
-            byte[] xmlBytes = tokenDoc.getBytes(StandardCharsets.UTF_8);
-
-            return xmlBytes;
+            return tokenDoc.getBytes(StandardCharsets.UTF_8);
 
         } catch (Exception e)
         {
@@ -282,11 +279,11 @@ public class Collector {
      */
     public static LdapContext getLdapCtx(String ldapHost, String loginDN, String pwd,
                                          boolean ssl, int ldapPort, boolean trustAllCerts) throws DaaSException {
-        LdapContext ldapCtx = null;
+        LdapContext ldapCtx;
 
         try {
             // Create a Hashtable object.
-            Hashtable env = new Hashtable(5, 0.75f);
+            Hashtable<String,String> env = new Hashtable<>(5, 0.75f);
 
             if (ssl) {
                 // ldapPort     = LdapCtx.DEFAULT_SSL_PORT;
@@ -296,8 +293,6 @@ public class Collector {
                     env.put("java.naming.ldap.factory.socket",
                             "com.pointbluetech.ida.collector.idm.entitlement.JndiSocketFactory");
                 }
-            } else {
-                //  ldapPort     = LdapCtx.DEFAULT_PORT;
             }
 
             env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY,

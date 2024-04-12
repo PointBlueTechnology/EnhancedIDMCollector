@@ -88,6 +88,12 @@ public class TestJig {
             entNameParam.put("required", true);
             entNameParam.put("value", "cn=Account,cn=CyberArk,cn=driverset1,o=system");
 
+//            JSONObject idmAcctIdParam = new JSONObject();
+//            idmAcctIdParam.put("name", "idm-account-id");
+//            idmAcctIdParam.put("data-type", "string");
+//            idmAcctIdParam.put("required", true);
+//            idmAcctIdParam.put("value", "TEST-VALUE");
+
 
             JSONObject customQueryParam = new JSONObject();
             customQueryParam.put("name", "custom-query");
@@ -132,9 +138,13 @@ customQueryParam.put("value", "");
             serviceParams.put(6, entNameParam);
             serviceParams.put(7, collClassParam);
             serviceParams.put(8, v_searchClassParam);
+           // serviceParams.put(9, idmAcctIdParam);
             configData.put("service-parms", serviceParams);
             //System.out.println(configData.getString(HOST_PARAM));
             configData.put("organization", "PointblueTechnology");
+            configData.put("collectorType", "ACCOUNT");
+           // configData.put("collectorType", "PERMISSION");
+
 
 
             //TODO: try it without this

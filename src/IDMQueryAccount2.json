@@ -1,6 +1,6 @@
 {
   "service-identifier": "EnhancedIDMAccountCollector",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "collectorType": "ACCOUNT",
   "class": "com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService",
   "allow-connection-test": true,
@@ -136,6 +136,14 @@
       "required": false,
       "options": null,
       "data_source_connection_parm": false
+    },
+    {
+      "name": "idm-account-id",
+        "display-name": "IDM Account ID",
+        "description": "IDM Account ID",
+        "data-type": "string",
+        "required": true,
+        "default-value": "idmAccountID"
     },
     {
       "data_source_connection_parm": false,
