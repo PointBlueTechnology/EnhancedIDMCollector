@@ -1,0 +1,39 @@
+{
+  "changeSetId": 24,
+  "changeItemId": 56,
+  "changeRequestType": "MODIFY_USER_PROFILE",
+  "userName": "JoeX Smith",
+  "userUniqueUserId": "67c32c51507040309230adfcb870d360",
+  "reason": "Request for profile attribute change(s) on user JoeX Smith requested by  admin. ",
+  "requesterName": " admin",
+  "requesterUniqueUserId": "06ac2803a3324d6f9a48a7e8ff677570",
+  "userProfile": "{\"accountProvId\":\"cn=test1,ou=users,o=data\",\"cn\":\"j\",\"sn\":\"\",\"fullName\":\"JoeX \",\"givenName\":\"JoeX\",\"title\":\"\",\"workforceID\":\"12345\",\"targetContainer\":\"ou=Users,o=Test\",\"password\":\"Password123!\"}",
+  "requesterProfile": {
+    "userId": "9275FCE50D4669428B179275FCE50D46",
+    "emails": [],
+    "idmDn": "cn=admin,ou=sa,o=system"
+  },
+  "userAttributeModifications": [
+    {
+      "attributeDefinitionId": 839,
+      "changeType": 1,
+      "attributeValue": "1719350820000",
+      "attributeName": "ext_rAccountExpirationDate",
+      "attributeDisplayName": {
+        "en": "R Account Expiration Date"
+      }
+    },
+    {
+      "attributeDefinitionId": 839,
+      "changeType": 2,
+      "attributeValue": "1718054820000",
+      "attributeName": "ext_rAccountExpirationDate",
+      "attributeDisplayName": {
+        "en": "R Account Expiration Date"
+      }
+    }
+  ],
+  "serviceName": "EEProfileFulfillmentTemplate-24-50-bdad1168a8874d27976fa7a1076ab879",
+  "viewName": "fulfillment-configuration",
+  "DAAS_AUTH_INFO": "cn=admin,ou=sa,o=system:dittibop"
+}
