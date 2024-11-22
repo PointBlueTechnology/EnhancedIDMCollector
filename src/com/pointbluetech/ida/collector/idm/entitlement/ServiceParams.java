@@ -40,6 +40,7 @@ public class ServiceParams {
     public static final String CERTIFICATE_PARAM = "security-certificate";
     public static final String CUSTOM_QUERY = "custom-query";
     public static final String IDENTITY_MANAGER_ACCOUNT_ID = "idm-account-id";
+    public static final String ATTRIBUTE_FOR_ASSOCIATION = "idm-attribute-for-association";
 
     private int readTimeout =  600;
 
@@ -54,13 +55,15 @@ public class ServiceParams {
 
     private String customQuery;
 
-    public boolean accountCollection = false;
+    //public boolean accountCollection = false;
 
     public boolean trustAllCerts = true;
 
     public String serverCertificate;
 
     public String idmAccountID;
+
+    public String attributeForAssociation;
 
     static final Logger LOGGER = LoggerFactory.getLogger(ServiceParams.class.getName());
 
@@ -78,12 +81,12 @@ public class ServiceParams {
 
         LOGGER.debug("Service Params"+jsonRequest.toString());
 
-        String collectionClass = CommonImpl.validateRequestParamString(jsonRequest, "collectorType");
-        if(collectionClass != null && collectionClass.equals("ACCOUNT"))
-        {
-            accountCollection = true;
-        }
-        LOGGER.debug("accountCollection: " + accountCollection);
+//        String collectionClass = CommonImpl.validateRequestParamString(jsonRequest, "collectorType");
+//        if(collectionClass != null && collectionClass.equals("ACCOUNT"))
+//        {
+//            accountCollection = true;
+//        }
+//        LOGGER.debug("accountCollection: " + accountCollection);
 
         // MANDATORY parameters
         setSearchClass(CommonImpl.validateServiceParamString(jsonRequest, SEARCH_CLASS));
@@ -105,7 +108,7 @@ public class ServiceParams {
         LOGGER.debug("trustAllCerts: " + trustAllCerts);
         this.serverCertificate = CommonImpl.getServiceParamString(jsonRequest, CERTIFICATE_PARAM, null);
         LOGGER.debug("serverCertificate: " + serverCertificate);
-        this.idmAccountID = CommonImpl.getServiceParamString(jsonRequest,"idm-account-id", "");
+        this.idmAccountID = CommonImpl.getServiceParamString(jsonRequest,IDENTITY_MANAGER_ACCOUNT_ID, "AcctID");
         LOGGER.debug("idmAccountID: " + idmAccountID);
 
 
@@ -206,4 +209,11 @@ public class ServiceParams {
     }
 
 
+    public void setAttributeForAssociation(String attributeForAssociation) {
+        this.attributeForAssociation = attributeForAssociation;
+    }
+
+    public String getAttributeForAssociation() {
+        return attributeForAssociation;
+    }
 }

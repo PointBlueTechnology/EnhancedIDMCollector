@@ -18,7 +18,9 @@ package com.pointbluetech.ida.collector.idm.entitlement.offline;
 
 import com.novell.nds.dirxml.driver.XmlDocument;
 import com.pointbluetech.ida.collector.idm.entitlement.ResultParser;
+import com.pointbluetech.ida.collector.idm.entitlement.ServiceParams;
 import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -34,9 +36,11 @@ public class ParserTest {
     public void run() {
         System.out.println("Running ParserTest");
         XmlDocument resultDoc = getXdsDoc("/com/pointbluetech/ida/collector/idm/entitlement/offline/result.xml");
+        JSONObject jsonRequest = new JSONObject();
+        //TODO: Add jsonRequest parameters
         ResultParser parser = new ResultParser();
         try {
-           JSONArray result = parser.parse(resultDoc.getDocumentString(), "entitlementsDNString", "idmAccountID-value");
+           JSONArray result = parser.parse(resultDoc.getDocumentString(), new ServiceParams(jsonRequest));
             System.out.println(result.toString(2));
         } catch (Exception e) {
             e.printStackTrace();

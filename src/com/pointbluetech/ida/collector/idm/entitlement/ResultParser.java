@@ -20,6 +20,7 @@ import com.netiq.daas.common.DaaSException;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -30,10 +31,11 @@ import javax.xml.parsers.SAXParserFactory;
 import java.io.StringReader;
 import java.math.BigInteger;
 import java.util.Base64;
+import org.slf4j.Logger;
 
 public class ResultParser {
 
-
+    static final Logger LOGGER = LoggerFactory.getLogger(ResultParser.class.getName());
 
     /**
      * Parses the result of a query.
@@ -43,8 +45,9 @@ public class ResultParser {
      * @return A JSONArray representing the parsed result.
      * @throws DaaSException If an error occurs during parsing.
      */
-    public  JSONArray parse(String result, String entitlementDn, String idmAccountID) throws DaaSException {
+    public  JSONArray parse(String result, ServiceParams params) throws DaaSException {
         try {
+            LOGGER.debug("Parsing result: " + result);
             InputSource is = new InputSource(new StringReader(result));
             SAXParserFactory factory = SAXParserFactory.newInstance();
             SAXParser saxParser = factory.newSAXParser();
@@ -52,12 +55,18 @@ public class ResultParser {
             QueryResultHandler handler = new QueryResultHandler();
             InputSource inputSource = new InputSource(new StringReader(result));
 
-            handler.setEntitlementDn(entitlementDn);
-            handler.setIdmAccountID(idmAccountID);
+            handler.setEntitlementDn(params.getEntitlementName());
+            handler.setIdmAccountID(params.getIdmAccountID());
+            handler.setAttributeForAssociation(params.getAttributeForAssociation());
             saxParser.parse(is, handler);
             return handler.getResultArray();
         } catch (Exception e) {
             e.printStackTrace();
+           StackTraceElement[] sta = e.getStackTrace();
+            for (StackTraceElement st : sta) {
+                LOGGER.error(st.toString());
+            }
+            LOGGER.error("Error parsing result", e.getMessage());
             throw new DaaSException("Error parsing result", e);
         }
 
@@ -65,6 +74,7 @@ public class ResultParser {
 
     class QueryResultHandler extends DefaultHandler {
 
+        final Logger LOGGER = LoggerFactory.getLogger(QueryResultHandler.class.getName());
         private StringBuilder elementValue;
         JSONArray resultArray = new JSONArray();
         JSONArray attrValues;
@@ -77,6 +87,15 @@ public class ResultParser {
         String id2;
         String className;
         String idmAccountID;
+        String assocRef;
+        String valueAssociation;
+        String attributeForAssociation;
+
+        /*
+        the name of an attribute that is returned with associations or association reference
+        values that should be returned as attribute values
+         */
+        String attrNameForAssocProcessing;
 
         String attrName;
         private String entitlementDn;
@@ -92,9 +111,18 @@ public class ResultParser {
             if(qName.equalsIgnoreCase("attr")) {
                 attrValues = new JSONArray();
                 attrName = attributes.getValue("attr-name");
+                assocRef=null;
+                valueAssociation=null;
             }
             if(qName.equalsIgnoreCase("value")) {
                 elementValue = new StringBuilder();
+
+                if(attrName != null && attrName.equals(attributeForAssociation))
+                {
+                    assocRef = attributes.getValue("association-ref");
+                    valueAssociation = attributes.getValue("association");
+                }
+
             }
             if(qName.equalsIgnoreCase("association")) {
                 elementValue = new StringBuilder();
@@ -144,6 +172,20 @@ public class ResultParser {
             }
             if(qName.equalsIgnoreCase("value")) {
                 attrValues.put(elementValue.toString());
+                /*
+                This should only occur for things like group membership where the driver adds a reference to the association
+                This is used for things like AD group membership so that you have both the DN and the guid of the group member
+                The AD driver with the Ent collection package transforms association to association-ref but we handle it either way
+                This should make the expensive transformation unnecessary.
+                Adding the additional value should do no harm as the only use for such attributes is permission to account matching.
+                values that don't match are ignored.
+                */
+                if(assocRef != null) {
+                   attrValues.put(assocRef);
+                }
+                if(valueAssociation != null) {
+                    attrValues.put(valueAssociation);
+                }
             }
             if(qName.equalsIgnoreCase("association")) {
                 association = elementValue.toString();
@@ -178,6 +220,10 @@ public class ResultParser {
 
         public void setIdmAccountID(String idmAccountID) {
             this.idmAccountID = idmAccountID;
+        }
+
+        public void setAttributeForAssociation(String attributeForAssociation) {
+            this.attributeForAssociation = attributeForAssociation;
         }
 
 

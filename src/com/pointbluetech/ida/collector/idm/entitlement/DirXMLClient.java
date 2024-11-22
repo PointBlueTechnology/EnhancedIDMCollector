@@ -80,12 +80,14 @@ public class DirXMLClient {
      */
     public byte[] submitXDSCommand(byte[] xds) throws DaaSException {
         try {
-
-            System.out.println(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
-            System.out.println(new String(xds));
+            LOGGER.debug("submitXDSCommand: " + this.m_driverDn + " : " + this.m_ldapReadTimeout + " : " + xds.length);
+            //System.out.println(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
+            //System.out.println(new String(xds));
+            LOGGER.debug(new String(xds));
             //TODO: had to use 1 for timeout to get it to work? figure out why
             SubmitCommandRequest request = new SubmitCommandRequest(this.m_driverDn, 1, xds);
             System.out.println(request.toString());
+            LOGGER.debug(request.toString());
             if (!this.isDriverRunning()) {
                 throw new DaaSException("Driver is not running.");
             } else {
@@ -94,8 +96,11 @@ public class DirXMLClient {
                 return responseData;
             }
         } catch (NamingException nex) {
+            LOGGER.error("Error submitting XDS command: " +nex.getMessage());
+
             throw new DaaSException(nex);
         } catch (LDAPException lex) {
+            LOGGER.error("Error submitting XDS command: " + lex.getMessage());
             throw new DaaSException(lex);
         }
     }
@@ -129,16 +134,15 @@ public class DirXMLClient {
  * It first checks if the driver is running, if not, it throws a DaaSException.
  * If the driver is running, it creates a SubmitEventRequest and sends it to the driver.
  * It then retrieves the response data in chunks and returns it.
- * NOT USED IN THIS PROJECT
  *
- * @param driverDn The distinguished name of the driver.
  * @param xds The XDS event to be submitted.
  * @return The response data from the driver.
  * @throws DaaSException If the driver is not running or if there is an error during the operation.
  */
-public byte[] submitXDSEvent(String driverDn, byte[] xds) throws DaaSException {
+public byte[] submitXDSEvent(byte[] xds) throws DaaSException {
     try {
         System.out.println(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
+        LOGGER.debug(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
         SubmitEventRequest request = new SubmitEventRequest(this.m_driverDn, this.m_ldapReadTimeout, xds);
 
         if (!this.isDriverRunning()) {
@@ -149,8 +153,10 @@ public byte[] submitXDSEvent(String driverDn, byte[] xds) throws DaaSException {
             return responseData;
         }
     } catch (NamingException nex) {
+        LOGGER.error("Error submitting XDS event: " + nex.getLocalizedMessage());
         throw new DaaSException(nex);
     } catch (LDAPException lex) {
+        LOGGER.error("Error submitting XDS event: " + lex.getLocalizedMessage());
         throw new DaaSException(lex);
     }
 }

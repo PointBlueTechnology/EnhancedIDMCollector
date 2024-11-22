@@ -71,7 +71,7 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
 
         try
         {
-            LOGGER.debug("In setConfigData...");
+            LOGGER.info("Setting config data for IDMEntitlementCollectionService version 4.2.2.0");
             serviceParams = new ServiceParams(configData);
 
         }

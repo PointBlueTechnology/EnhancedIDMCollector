@@ -54,6 +54,7 @@ public class Collector {
 
     private JSONObject jsonRequest;
 
+
     public final void setCredentials(String user, String password)
     {
         LOGGER.debug("Setting Credentials");
@@ -123,23 +124,28 @@ public class Collector {
         if(jsonRequest.optString("search-class").equals("Account"))
         {
             LOGGER.debug("Account collection; using search class: "+ m_serviceParams.getSearchClass());
-            queryXDS = getQuery(m_serviceParams.getSearchClass(), m_serviceParams.getCustomQuery(), m_serviceParams.accountCollection);
+            queryXDS = getQuery(m_serviceParams.getSearchClass(), m_serviceParams.getCustomQuery(), true);
 
         }else{
             String permissionSearchClass = jsonRequest.optString("view-dxml-search-class");
             LOGGER.debug("Not an account collection; using search class: "+ permissionSearchClass);
 
             String permissionCustomQuery = jsonRequest.optString("view-custom-query");
-         queryXDS = getQuery(permissionSearchClass, permissionCustomQuery, m_serviceParams.accountCollection);
+         queryXDS = getQuery(permissionSearchClass, permissionCustomQuery, false);
+
+         String attributeForAssociation = jsonRequest.optString(ServiceParams.ATTRIBUTE_FOR_ASSOCIATION,"Member");
+         m_serviceParams.setAttributeForAssociation(attributeForAssociation);
 
         }
+
+
 
 
        LOGGER.debug("Driver running: "+udClient.isDriverRunning() );
         //byte[] response = udClient.submitXDSEvent(m_viewParams.getDriverName(), queryXDS);
         byte[] response = udClient.submitXDSCommand( queryXDS);
 
-        JSONArray results = new ResultParser().parse(new String(response), m_serviceParams.getEntitlementName(), m_serviceParams.getIdmAccountID());
+        JSONArray results = new ResultParser().parse(new String(response), m_serviceParams);
         try{
         LOGGER.debug("Results: " + results.toString(2));
         }catch (Exception e)
@@ -281,6 +287,8 @@ public class Collector {
                                          boolean ssl, int ldapPort, boolean trustAllCerts) throws DaaSException {
         LdapContext ldapCtx;
 
+        LOGGER.debug("Getting LdapCtx: "+ldapHost+" "+loginDN+" "+ldapPort+" "+ssl+" "+trustAllCerts);
+
         try {
             // Create a Hashtable object.
             Hashtable<String,String> env = new Hashtable<>(5, 0.75f);
@@ -294,6 +302,7 @@ public class Collector {
                             "com.pointbluetech.ida.collector.idm.entitlement.JndiSocketFactory");
                 }
             }
+            LOGGER.debug("Setting up environment");
 
             env.put(javax.naming.Context.INITIAL_CONTEXT_FACTORY,
                     "com.sun.jndi.ldap.LdapCtxFactory");
@@ -302,7 +311,7 @@ public class Collector {
             env.put(javax.naming.Context.SECURITY_AUTHENTICATION, "simple");
             env.put(javax.naming.Context.SECURITY_PRINCIPAL, loginDN);
             env.put(javax.naming.Context.SECURITY_CREDENTIALS, pwd);
-
+            LOGGER.debug("Getting LdapCtx: "+env.toString());
             // Construct an LdapContext object.
             ldapCtx = new InitialLdapContext(env, null);
         } catch (NamingException e) {
@@ -311,6 +320,7 @@ public class Collector {
             LOGGER.error("Error getting LdapCtx:  ", e);
             throw new DaaSException("Error getting LdapCtx:  " + e.getLocalizedMessage());
         }
+        LOGGER.debug("Got LdapCtx");
 
         return ldapCtx;
     }
