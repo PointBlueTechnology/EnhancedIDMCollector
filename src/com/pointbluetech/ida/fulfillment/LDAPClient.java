@@ -16,6 +16,7 @@
 
 package com.pointbluetech.ida.fulfillment;
 
+import com.pointbluetech.ida.collector.idm.entitlement.JndiSocketFactory;
 import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,18 +74,31 @@ public class LDAPClient {
 
     private DirContext getConnection() throws NamingException {
         Hashtable<String, String> env = new Hashtable<>();
-        //Map<String, String> configMap = this.m_connector.getProperties();
+        // Load any provided properties into the environment
         Iterator<String> pit = configMap.keySet().iterator();
         while (pit.hasNext()) {
             String propertyKey = pit.next();
             env.put(propertyKey, configMap.get(propertyKey));
         }
-//        if (env.containsKey("java.naming.security.protocol")) {
-//            String alsCert = (String)ThreadGroupLocal.get(Connector.getCertParam());
-//            LOGGER.debug("Fulfillment Certificate string: " + alsCert);
-//            KeyStore keyStore = SSLSocketFactoryPrivate.getCertificateKeyStore(alsCert);
-//            ThreadGroupLocal.put(Connector.getCertKeystoreName(), keyStore);
-//        }
+
+        // Honor insecure trust-all for LDAPS the same way as DirXMLClient via JndiSocketFactory
+        // Enable by setting -Dida.trustAll=true (default true) or putting "trustAll=true" into configMap
+        boolean trustAll = true;
+        String trustAllStr = System.getProperty("ida.trustAll");
+        if (trustAllStr != null) {
+            trustAll = Boolean.parseBoolean(trustAllStr);
+        } else if (configMap.containsKey("trustAll")) {
+            trustAll = Boolean.parseBoolean(configMap.get("trustAll"));
+        }
+
+        String providerUrl = env.get("java.naming.provider.url");
+        String protocol = env.get("java.naming.security.protocol");
+        boolean isLdaps = (providerUrl != null && providerUrl.toLowerCase().startsWith("ldaps://"))
+                || (protocol != null && protocol.equalsIgnoreCase("ssl"));
+        if (isLdaps && trustAll) {
+            env.put("java.naming.ldap.factory.socket", JndiSocketFactory.class.getName());
+        }
+
         return new InitialDirContext(env);
     }
 }
