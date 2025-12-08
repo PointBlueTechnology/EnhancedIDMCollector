@@ -20,5 +20,6 @@
         <jarDirectory url="file://$USER_HOME$/Dev/igCollectorDependencies" recursive="false" type="SOURCES" />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="DaaS-SDKServer" level="project" />
   </component>
 </module>

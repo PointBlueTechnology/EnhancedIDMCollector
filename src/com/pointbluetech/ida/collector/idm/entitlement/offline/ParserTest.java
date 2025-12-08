@@ -28,15 +28,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 
 public class ParserTest {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         ParserTest theOne = new ParserTest();
         theOne.run();
     }
 
-    public void run() {
+    public void run() throws Exception {
         System.out.println("Running ParserTest");
-        XmlDocument resultDoc = getXdsDoc("/com/pointbluetech/ida/collector/idm/entitlement/offline/result.xml");
-        JSONObject jsonRequest = new JSONObject();
+        XmlDocument resultDoc = getXdsDoc("/com/pointbluetech/ida/collector/idm/entitlement/offline/ccResult.xml");
+        JSONObject jsonRequest = getJSONDoc("/com/pointbluetech/ida/collector/idm/entitlement/offline/serviceParams.json");
         //TODO: Add jsonRequest parameters
         ResultParser parser = new ResultParser();
         try {
@@ -48,13 +48,22 @@ public class ParserTest {
 
     }
 
-    public static XmlDocument getXdsDoc(String xdsDocPath) {
+    public static XmlDocument getXdsDoc(String xdsDocPath){
         InputStream istream = TestJig.class.getResourceAsStream(xdsDocPath);
 
         String initString = getStringFromInputStream(istream);
         //System.out.println(initString);
         return new XmlDocument(initString);
     }
+
+    public static JSONObject getJSONDoc(String path) throws Exception{
+        InputStream istream = TestJig.class.getResourceAsStream(path);
+
+        String initString = getStringFromInputStream(istream);
+        //System.out.println(initString);
+        return new JSONObject(initString);
+    }
+
 
     public static String getStringFromInputStream(InputStream is) {
 

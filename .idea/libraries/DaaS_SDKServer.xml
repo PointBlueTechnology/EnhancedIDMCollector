@@ -1,0 +1,20 @@
+<component name="libraryTable">
+  <library name="DaaS-SDKServer">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/DaaS-SDKServer.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/dirxml_misc.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/jettison-1.3.7.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/js-22.3.3.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/js-scriptengine-22.3.3.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/jsr305-3.0.2.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/ldap.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/logging-common-1.4.2-57.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/slf4j-api-1.7.22.jar!/" />
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/XDS-4.8.0.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/Downloads/igCollectorDependencies/igCollectorDependencies/DaaS-SDKServer.jar!/" />
+    </SOURCES>
+  </library>
+</component>
