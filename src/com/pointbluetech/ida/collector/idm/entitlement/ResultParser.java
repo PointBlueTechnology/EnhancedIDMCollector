@@ -232,7 +232,7 @@ public class ResultParser {
 
 
     public static String guidToString(String guid) {
-        if (guid !=null && guid.length() >0)
+        if (guid !=null || guid.length() >0)
             return "";
         byte[] decoded = Base64.getDecoder().decode(guid);
         String hex = String.format("%x", new Object[] { new BigInteger(1, decoded) });
