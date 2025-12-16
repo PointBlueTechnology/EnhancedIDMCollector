@@ -38,12 +38,13 @@ public class ResultParser {
     static final Logger LOGGER = LoggerFactory.getLogger(ResultParser.class.getName());
 
     /**
-     * Parses the result of a query.
+     * Parses the XML result returned from an IDM query into a {@link JSONArray}.
      *
-     * @param result The result of the query.
-     * @param entitlementDn The distinguished name of the entitlement.
-     * @return A JSONArray representing the parsed result.
-     * @throws DaaSException If an error occurs during parsing.
+     * @param result the raw XML result string to parse
+     * @param params service parameters providing context (e.g. entitlement name, IDM account ID,
+     *               and the attribute used for association handling)
+     * @return a {@link JSONArray} representing the parsed instances and their attributes
+     * @throws DaaSException if an error occurs during parsing
      */
     public  JSONArray parse(String result, ServiceParams params) throws DaaSException {
         try {
