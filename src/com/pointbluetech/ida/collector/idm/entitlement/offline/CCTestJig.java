@@ -18,112 +18,32 @@ package com.pointbluetech.ida.collector.idm.entitlement.offline;
 
 import com.netiq.daas.common.CommonImpl;
 import com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService;
-import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+public class CCTestJig extends BaseTestJig {
 
-public class CCTestJig {
-
-    private static final String HOST_PARAM = "server";
-    private static final String PORT_PARAM = "port";
-
-    private static final String PAGE_SIZE_LIMIT = "page-size-limit";
-    public static final String CERTIFICATE_PARAM = "service-cert";
     public static void main(String[] args) {
         CCTestJig theOne = new CCTestJig();
         theOne.run();
     }
 
+    @Override
     public void run() {
-
         try {
-            IDMEntitlementCollectionService service = new IDMEntitlementCollectionService();
+            IDMEntitlementCollectionService service = createService();
 
             JSONObject serviceParams = getJSONDoc("/com/pointbluetech/ida/collector/idm/entitlement/offline/serviceParams.json");
 
-
-            //TODO: try it without this
-            service.setConfigData("traceFileName", 3, "instanceID",serviceParams);
-            JSONObject request = new JSONObject(" {\n" +
-                    "  \"search-class\": \"Account\",\n" +
-                    "  \"read-attrs\": [\n" +
-                    "    \"association\",\n" +
-                    "    \"displayName\",\n" +
-                    "    \"CN\",\n" +
-                    "    \"entitlementDn\",\n" +
-                    "    \"loginDisabled\",\n" +
-                    "    \"entryDn\",\n" +
-                    "    \"id\",\n" +
-                    "    \"liid\",\n" +
-                    "    \"vacationStatus\"\n" +
-                    "  ],\n" +
-                    "  \"DAAS_AUTH_INFO\": \"cn=admin,ou=sa,o=system:am1c@1n53cu435t@g3\",\n" +
-                    "  \"view-name\": \"account\"\n" +
-                    "}");
+            service.setConfigData("traceFileName", 3, "instanceID", serviceParams);
+            JSONObject request = getJSONDoc("/com/pointbluetech/ida/collector/idm/entitlement/offline/cc-request.json");
 
             String authInfo = "cn=admin,ou=sa,o=system:am1c@1n53cu435t@g3";
             request.put(CommonImpl.DAAS_AUTH_ATTR, authInfo);
             service.serviceTest("cn=admin,ou=sa,o=system:am1c@1n53cu435t@g3");
-       // System.out.println(serviceParams.toString());
 
-
-            JSONObject result = service.executeJSONChunkRequest(request, null, 100);
-            System.out.println(result.toString(2));
+            executeRequest(service, request, 100);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
     }
-
-    public static JSONObject getJSONDoc(String path) throws Exception{
-        InputStream istream = TestJig.class.getResourceAsStream(path);
-
-        String initString = getStringFromInputStream(istream);
-        //System.out.println(initString);
-        return new JSONObject(initString);
-    }
-
-
-    public static String getStringFromInputStream(InputStream is) {
-
-        BufferedReader br = null;
-        StringBuilder sb = new StringBuilder();
-
-        String line;
-        try
-        {
-
-            br = new BufferedReader(new InputStreamReader(is));
-            while ((line = br.readLine()) != null)
-            {
-                sb.append(line);
-            }
-
-        } catch (IOException e)
-        {
-            e.printStackTrace();
-        } finally
-        {
-            if (br != null)
-            {
-                try
-                {
-                    br.close();
-                } catch (IOException e)
-                {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        return sb.toString();
-
-    }
-
-
 }
