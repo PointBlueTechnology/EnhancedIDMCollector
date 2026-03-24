@@ -39,12 +39,14 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 public class DirXMLClient {
 
     static final Logger LOGGER = LoggerFactory.getLogger(DirXMLClient.class.getName());
 
-    public static final int CHUNK_SIZE = 10240;
+    private static final int DRIVER_STATE_RUNNING = 2;
+
     private String m_driverDn;
     private int m_ldapReadTimeout;
     private LdapContext lctx;
@@ -56,6 +58,8 @@ public class DirXMLClient {
         this.m_ldapReadTimeout = ldapReadTimeout;
         LOGGER.debug("DirXMLClient created with driverDN: " + driverDN + " and ldapReadTimeout: " + ldapReadTimeout);
 
+        //Uncomment to enable LDAP tracing
+        //System.setProperty("com.sun.jndi.ldap.trace.ber", "ldap_trace.txt");
     }
 
     public String getDriverDn() {
@@ -67,12 +71,8 @@ public class DirXMLClient {
     }
 
     /**
-     * This method is used to submit an XDS command to the driver.
-     * It first prints out the driver's distinguished name, the LDAP read timeout, and the length of the XDS command.
-     * It then creates a SubmitCommandRequest with the driver's distinguished name, a timeout of 1, and the XDS command.
+     * Submits an XDS command to the driver and retrieves the response.
      * If the driver is not running, it throws a DaaSException.
-     * If the driver is running, it sends the SubmitCommandRequest to the driver and retrieves the response.
-     * It then retrieves the response data in chunks and returns it.
      *
      * @param xds The XDS command to be submitted.
      * @return The response data from the driver.
@@ -85,8 +85,8 @@ public class DirXMLClient {
             //System.out.println(new String(xds));
             LOGGER.debug(new String(xds));
             //TODO: had to use 1 for timeout to get it to work? figure out why
+
             SubmitCommandRequest request = new SubmitCommandRequest(this.m_driverDn, 1, xds);
-            System.out.println(request.toString());
             LOGGER.debug(request.toString());
             if (!this.isDriverRunning()) {
                 throw new DaaSException("Driver is not running.");
@@ -116,50 +116,60 @@ public class DirXMLClient {
      */
     public boolean isDriverRunning() throws DaaSException {
         SearchControls sc = new SearchControls();
-        sc.setSearchScope(2);
+        sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
         sc.setReturningAttributes(new String[]{"DirXML-State"});
 
+        NamingEnumeration<SearchResult> results = null;
         try {
-            NamingEnumeration<SearchResult> results = this.lctx.search(this.m_driverDn, "(objectClass=*)", sc);
+            results = this.lctx.search(this.m_driverDn, "(objectClass=*)", sc);
             int state = Integer.parseInt((String)((SearchResult)results.nextElement()).getAttributes().get("DirXML-State").get());
-            return state == 2;
+            return state == DRIVER_STATE_RUNNING;
         } catch (NamingException nex) {
-            LOGGER.error("Error checking if driver is running", nex.getLocalizedMessage());
+            LOGGER.error("Error checking if driver is running", nex);
             throw new DaaSException(nex);
+        } catch (NoSuchElementException nse) {
+            throw new DaaSException(nse);
+        } finally {
+            if (results != null) {
+                try {
+                    results.close();
+                } catch (NamingException e) {
+                    LOGGER.debug("Error closing NamingEnumeration", e);
+                }
+            }
         }
     }
 
-/**
- * This method is used to submit an XDS event to the driver.
- * It first checks if the driver is running, if not, it throws a DaaSException.
- * If the driver is running, it creates a SubmitEventRequest and sends it to the driver.
- * It then retrieves the response data in chunks and returns it.
- *
- * @param xds The XDS event to be submitted.
- * @return The response data from the driver.
- * @throws DaaSException If the driver is not running or if there is an error during the operation.
- */
-public byte[] submitXDSEvent(byte[] xds) throws DaaSException {
-    try {
-        System.out.println(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
-        LOGGER.debug(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
-        SubmitEventRequest request = new SubmitEventRequest(this.m_driverDn, this.m_ldapReadTimeout, xds);
+    /**
+     * This method is used to submit an XDS event to the driver.
+     * It first checks if the driver is running, if not, it throws a DaaSException.
+     * If the driver is running, it creates a SubmitEventRequest and sends it to the driver.
+     * It then retrieves the response data in chunks and returns it.
+     *
+     * @param xds The XDS event to be submitted.
+     * @return The response data from the driver.
+     * @throws DaaSException If the driver is not running or if there is an error during the operation.
+     */
+    public byte[] submitXDSEvent(byte[] xds) throws DaaSException {
+        try {
+            LOGGER.debug(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
+            SubmitEventRequest request = new SubmitEventRequest(this.m_driverDn, this.m_ldapReadTimeout, xds);
 
-        if (!this.isDriverRunning()) {
-            throw new DaaSException("Driver is not running.");
-        } else {
-            SubmitEventResponse response = (SubmitEventResponse)this.lctx.extendedOperation(request);
-            byte[] responseData = this.getChunkedResponse(response.getDataSize(), response.getDataHandle());
-            return responseData;
+            if (!this.isDriverRunning()) {
+                throw new DaaSException("Driver is not running.");
+            } else {
+                SubmitEventResponse response = (SubmitEventResponse)this.lctx.extendedOperation(request);
+                byte[] responseData = this.getChunkedResponse(response.getDataSize(), response.getDataHandle());
+                return responseData;
+            }
+        } catch (NamingException nex) {
+            LOGGER.error("Error submitting XDS event: " + nex.getLocalizedMessage());
+            throw new DaaSException(nex);
+        } catch (LDAPException lex) {
+            LOGGER.error("Error submitting XDS event: " + lex.getLocalizedMessage());
+            throw new DaaSException(lex);
         }
-    } catch (NamingException nex) {
-        LOGGER.error("Error submitting XDS event: " + nex.getLocalizedMessage());
-        throw new DaaSException(nex);
-    } catch (LDAPException lex) {
-        LOGGER.error("Error submitting XDS event: " + lex.getLocalizedMessage());
-        throw new DaaSException(lex);
     }
-}
 
     /**
      * This method retrieves a response in chunks from the driver.
@@ -178,41 +188,22 @@ public byte[] submitXDSEvent(byte[] xds) throws DaaSException {
     private byte[] getChunkedResponse(int size, int handle) throws DaaSException {
         try {
             ByteArrayOutputStream os = new ByteArrayOutputStream();
-            Throwable var4 = null;
-
-            try {
-                int sizeRemaining = size;
-                int chunkSize = size > 10240 ? 10240 : size;
-
-                byte[] reply;
-                while(sizeRemaining > 0) {
-                    GetChunkedResultRequest request = new GetChunkedResultRequest(handle, chunkSize, 0);
-                    GetChunkedResultResponse response = (GetChunkedResultResponse)this.lctx.extendedOperation(request);
-                    reply = response.getData();
-                    sizeRemaining -= reply.length;
-                    os.write(reply);
+            int sizeRemaining = size;
+            int chunkSize = Math.min(size, 10240);
+            while (sizeRemaining > 0) {
+                //Additional timeout was added to overcome the error 80 issue
+                GetChunkedResultRequest request = new GetChunkedResultRequest(handle, chunkSize, 10);
+                GetChunkedResultResponse response = (GetChunkedResultResponse) this.lctx.extendedOperation(request);
+                byte[] reply = response.getData();
+                if (reply == null || reply.length == 0) {
+                    throw new DaaSException("Received empty chunk with " + sizeRemaining + " bytes remaining; aborting.");
                 }
-
-                this.lctx.extendedOperation(new CloseChunkedResultRequest(handle));
-                reply = os.toByteArray();
-                return reply;
-            } catch (Throwable var18) {
-                var4 = var18;
-                throw var18;
-            } finally {
-                if (os != null) {
-                    if (var4 != null) {
-                        try {
-                            os.close();
-                        } catch (Throwable var17) {
-                            var4.addSuppressed(var17);
-                        }
-                    } else {
-                        os.close();
-                    }
-                }
-
+                sizeRemaining -= reply.length;
+                os.write(reply);
             }
+
+            this.lctx.extendedOperation(new CloseChunkedResultRequest(handle));
+            return os.toByteArray();
         } catch (LDAPException | IOException | NamingException lex) {
             throw new DaaSException(lex);
         }
@@ -264,33 +255,34 @@ public byte[] submitXDSEvent(byte[] xds) throws DaaSException {
             docFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
             DocumentBuilder builder = docFactory.newDocumentBuilder();
             return builder.parse(new ByteArrayInputStream(xml.getBytes()));
-        } catch (ParserConfigurationException pcex) {
-            throw new DaaSException(pcex);
-        } catch (SAXException saxex) {
-            throw new DaaSException(saxex);
-        } catch (IOException ioex) {
-            throw new DaaSException(ioex);
+        } catch (ParserConfigurationException | SAXException | IOException ex) {
+            throw new DaaSException(ex);
         }
     }
 
     public boolean find(String dn) throws DaaSException {
         SearchControls sc = new SearchControls();
-        sc.setSearchScope(2);
+        sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
         sc.setReturningAttributes(new String[0]);
 
+        NamingEnumeration<SearchResult> entlSearch = null;
         try {
-            NamingEnumeration<SearchResult> entlSearch = this.lctx.search(dn, "(objectclass=*)", sc);
+            entlSearch = this.lctx.search(dn, "(objectclass=*)", sc);
             return entlSearch.hasMore();
-        } catch (NamingException var4) {
-            if (var4 instanceof NameNotFoundException) {
+        } catch (NamingException namingEx) {
+            if (namingEx instanceof NameNotFoundException) {
                 return false;
             } else {
-                throw new DaaSException(var4);
+                throw new DaaSException(namingEx);
+            }
+        } finally {
+            if (entlSearch != null) {
+                try {
+                    entlSearch.close();
+                } catch (NamingException e) {
+                    LOGGER.debug("Error closing NamingEnumeration", e);
+                }
             }
         }
     }
-
-
-
-
 }
