@@ -10,7 +10,7 @@ This code is provided as-is and is not supported by OpenText/NetIQ. Paid support
 
 If you would like to contribute to this project, please fork the repository and submit a pull request.
 
-Binary builds are available [here](https://software.pointbluetech.com/pb/oss/eec/v1.0/).
+Binary builds are available on the [GitHub Releases page](https://github.com/PointBlueTechnology/EnhancedIDMCollector/releases).
 
 ## Use cases
 
