@@ -38,6 +38,20 @@ public class ResultParser {
     static final Logger LOGGER = LoggerFactory.getLogger(ResultParser.class.getName());
 
     /**
+     * The {@code <query-token>} value captured from the most recent {@link #parse}
+     * call, or {@code null} if the response carried no token (i.e. the result set
+     * is complete / paging is not in effect).
+     */
+    private String queryToken;
+
+    /**
+     * @return the continuation token from the last parsed response, or {@code null}.
+     */
+    public String getQueryToken() {
+        return queryToken;
+    }
+
+    /**
      * Parses the XML result returned from an IDM query into a {@link JSONArray}.
      *
      * @param result the raw XML result string to parse
@@ -60,6 +74,7 @@ public class ResultParser {
             handler.setIdmAccountID(params.getIdmAccountID());
             handler.setAttributeForAssociation(params.getAttributeForAssociation());
             saxParser.parse(is, handler);
+            this.queryToken = handler.getQueryToken();
             return handler.getResultArray();
         } catch (Exception e) {
             e.printStackTrace();
@@ -101,6 +116,7 @@ public class ResultParser {
         String attrName;
         private String entitlementDn;
         private String status;
+        private String queryToken;
 
         //StringBuilder assocValue;
         public void startElement(String uri, String localName, String qName, Attributes attributes) throws SAXException {
@@ -134,6 +150,10 @@ public class ResultParser {
                 status = attributes.getValue("level");
                 elementValue = new StringBuilder();
 
+            }
+
+            if(qName.equalsIgnoreCase("query-token")) {
+                elementValue = new StringBuilder();
             }
 
         }
@@ -198,6 +218,11 @@ public class ResultParser {
                 }
             }
 
+            if(qName.equalsIgnoreCase("query-token")) {
+                String token = elementValue.toString().trim();
+                queryToken = token.isEmpty() ? null : token;
+            }
+
 
         }
 
@@ -213,6 +238,10 @@ public class ResultParser {
 
         public JSONArray getResultArray() {
             return resultArray;
+        }
+
+        public String getQueryToken() {
+            return queryToken;
         }
 
         public void setEntitlementDn(String entitlementDn) {

@@ -54,6 +54,22 @@ public class Collector {
 
     private JSONObject jsonRequest;
 
+    // --- query-ex chunked-collection state (only used when paging is enabled) ---
+    /** Connection reused across page requests for a single collection. */
+    private DirXMLClient udClient;
+    /** Continuation token returned by the driver; null when the set is complete. */
+    private String m_idmQueryToken;
+    /** Whether the driver signalled more pages on the last response. */
+    private boolean m_hasMore = false;
+    /** Resolve the view's query parameters once, on the first page. */
+    private boolean m_started = false;
+    private String m_searchClass;
+    private String m_customQuery;
+    private boolean m_accountCollection;
+    /** Driver query-ex capability, detected once after the connection is open. */
+    private boolean m_capsResolved = false;
+    private boolean m_driverSupportsQueryEx = false;
+
 
     public final void setCredentials(String user, String password)
     {
@@ -110,42 +126,67 @@ public class Collector {
         {
             LOGGER.error("Error getting jsonRequest", e);
         }
-        // TODO: Execute query based on values in ViewParams
-        //we are only going to do the query once
-        //then we cache the results
-        //page through them if needed
-        myLdapCTX = getLdapCtx(m_serviceParams.getHost(), m_user, m_password, true, m_serviceParams.getPort(), m_serviceParams.getTrustAllCerts());
 
-        DirXMLClient udClient = new DirXMLClient(myLdapCTX, m_serviceParams.getDriverName(), m_serviceParams.getReadTimeout());
-
-
-        byte[] queryXDS;
-        //We are going to send the search through to the DirXMLClient
-        if(jsonRequest.optString("search-class").equals("Account"))
+        // Resolve the view's query parameters once, on the first page, and keep
+        // them for any continuation pages so we don't depend on the continuation
+        // request echoing the same view fields back to us.
+        if (!m_started)
         {
-            LOGGER.debug("Account collection; using search class: "+ m_serviceParams.getSearchClass());
-            queryXDS = getQuery(m_serviceParams.getSearchClass(), m_serviceParams.getCustomQuery(), true);
-
-        }else{
-            String permissionSearchClass = jsonRequest.optString("view-dxml-search-class");
-            LOGGER.debug("Not an account collection; using search class: "+ permissionSearchClass);
-
-            String permissionCustomQuery = jsonRequest.optString("view-custom-query");
-         queryXDS = getQuery(permissionSearchClass, permissionCustomQuery, false);
-
-         String attributeForAssociation = jsonRequest.optString(ServiceParams.ATTRIBUTE_FOR_ASSOCIATION,"Member");
-         m_serviceParams.setAttributeForAssociation(attributeForAssociation);
-
+            if (jsonRequest.optString("search-class").equals("Account"))
+            {
+                m_accountCollection = true;
+                m_searchClass = m_serviceParams.getSearchClass();
+                m_customQuery = m_serviceParams.getCustomQuery();
+                LOGGER.debug("Account collection; using search class: " + m_searchClass);
+            }
+            else
+            {
+                m_accountCollection = false;
+                m_searchClass = jsonRequest.optString("view-dxml-search-class");
+                m_customQuery = jsonRequest.optString("view-custom-query");
+                LOGGER.debug("Not an account collection; using search class: " + m_searchClass);
+                m_serviceParams.setAttributeForAssociation(
+                        jsonRequest.optString(ServiceParams.ATTRIBUTE_FOR_ASSOCIATION, "Member"));
+            }
+            m_started = true;
         }
 
+        // Connect once and reuse the context across pages of a single collection.
+        if (udClient == null)
+        {
+            myLdapCTX = getLdapCtx(m_serviceParams.getHost(), m_user, m_password, true,
+                    m_serviceParams.getPort(), m_serviceParams.getTrustAllCerts());
+            udClient = new DirXMLClient(myLdapCTX, m_serviceParams.getDriverName(),
+                    m_serviceParams.getReadTimeout());
+        }
 
+        // Decide whether to page. In "auto" mode (the default) we ask the driver
+        // once whether it supports query-ex; "on"/"off" force the choice.
+        boolean paged = useQueryEx();
+        int maxResultCount = paged ? effectivePageSize() : 0;
 
+        byte[] queryXDS = getQuery(m_searchClass, m_customQuery, m_accountCollection,
+                maxResultCount, paged ? m_idmQueryToken : null);
 
-       LOGGER.debug("Driver running: "+udClient.isDriverRunning() );
-        //byte[] response = udClient.submitXDSEvent(m_viewParams.getDriverName(), queryXDS);
-        byte[] response = udClient.submitXDSCommand( queryXDS);
+        LOGGER.debug("Driver running: " + udClient.isDriverRunning());
+        byte[] response = udClient.submitXDSCommand(queryXDS);
 
-        JSONArray results = new ResultParser().parse(new String(response), m_serviceParams);
+        ResultParser parser = new ResultParser();
+        JSONArray results = parser.parse(new String(response), m_serviceParams);
+
+        if (paged)
+        {
+            // A returned <query-token> means more pages remain; its absence means
+            // the result set is complete.
+            m_idmQueryToken = parser.getQueryToken();
+            m_hasMore = (m_idmQueryToken != null);
+            LOGGER.debug("query-ex page returned " + results.length() + " results; hasMore=" + m_hasMore);
+            if (!m_hasMore)
+            {
+                closeConnection();
+            }
+        }
+
         try{
         LOGGER.debug("Results: " + results.toString(2));
         }catch (Exception e)
@@ -154,10 +195,68 @@ public class Collector {
 
         }
         return results;
+    }
 
+    /**
+     * Decide whether this collection should use {@code <query-ex>} chunking.
+     * <ul>
+     *   <li>{@code off} - never; always the legacy plain {@code <query>}.</li>
+     *   <li>{@code on}  - always (the driver is assumed query-ex capable).</li>
+     *   <li>{@code auto} (default) - detect once by asking the driver whether it
+     *       advertises {@code query-ex-supported}; cached for the collection.</li>
+     * </ul>
+     */
+    private boolean useQueryEx()
+    {
+        String mode = m_serviceParams.getQueryExMode();
+        if ("off".equalsIgnoreCase(mode))
+        {
+            return false;
+        }
+        if ("on".equalsIgnoreCase(mode))
+        {
+            return true;
+        }
+        // auto: probe the driver once, then reuse the answer for every page.
+        if (!m_capsResolved)
+        {
+            m_driverSupportsQueryEx = udClient.driverSupportsQueryEx();
+            m_capsResolved = true;
+            LOGGER.debug("Auto query-ex: driver supports query-ex = " + m_driverSupportsQueryEx);
+        }
+        return m_driverSupportsQueryEx;
+    }
 
+    /**
+     * Effective query-ex page size: the chunk size requested by Identity
+     * Governance, bounded by the configured {@code page-size-limit}.
+     */
+    private int effectivePageSize()
+    {
+        int limit = m_serviceParams.getPageSizeLimit();
+        int size = m_pageSize > 0 ? m_pageSize : limit;
+        if (limit > 0 && size > limit)
+        {
+            size = limit;
+        }
+        return size > 0 ? size : 100;
+    }
 
-
+    private void closeConnection()
+    {
+        udClient = null;
+        if (myLdapCTX != null)
+        {
+            try
+            {
+                myLdapCTX.close();
+            }
+            catch (Exception e)
+            {
+                LOGGER.error("Error closing LDAP Context", e);
+            }
+            myLdapCTX = null;
+        }
     }
 
     /**
@@ -202,21 +301,15 @@ public class Collector {
     }
 
     public boolean hasMore() {
-        return false; //We are always going to return all results
+        // True only while the driver keeps returning a continuation <query-token>
+        // (chunked collection). Legacy single-shot collections leave this false.
+        return m_hasMore;
     }
 
 
 
     public void shutdown() {
-        if(myLdapCTX != null)
-        {
-            try{
-                myLdapCTX.close();
-            }catch (Exception e)
-            {
-                LOGGER.error("Error closing LDAP Context", e);
-            }
-        }
+        closeConnection();
     }
 
     /**
@@ -234,36 +327,61 @@ public class Collector {
      * @return The query as a byte array.
      * @throws DaaSException If there is an error during the operation.
      */
-    public static byte[] getQuery(String searchClass, String queryText, boolean accountCollection) throws DaaSException {
+    public static byte[] getQuery(String searchClass, String queryText, boolean accountCollection,
+                                  int maxResultCount, String queryToken) throws DaaSException {
 
-        String tokenDoc = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?><nds dtdversion=\"2.0\"><input><query class-name=\""+searchClass+"\" event-id=\"IG:query\" scope=\"subtree\"><search-class class-name=\""+searchClass+"\"/><operation-data ig-account-collection-query=\"false\" ig-collection-query=\"true\"/></query></input></nds>";
-        //if this is an account query, set the ig-account-collection-query="true"
-        if(accountCollection)
+        boolean paged = maxResultCount > 0;
+        String tokenDoc;
+
+        if (queryText != null && !queryText.isEmpty())
         {
-            tokenDoc = tokenDoc.replace("ig-account-collection-query=\"false\"", "ig-account-collection-query=\"true\"");
+            // Custom query: forwarded verbatim. To participate in chunking it must
+            // itself be authored as <query-ex> with the IG collection markers and a
+            // max-result-count; on a continuation page we splice in the token.
+            tokenDoc = (paged && queryToken != null) ? injectQueryToken(queryText, queryToken) : queryText;
         }
-
-        if(queryText != null && !queryText.isEmpty())
+        else if (paged)
         {
-            tokenDoc = queryText;
+            // Built-in chunked collection query (<query-ex> + max-result-count).
+            tokenDoc = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>"
+                    + "<nds dtdversion=\"2.0\"><input>"
+                    + "<query-ex class-name=\"" + searchClass + "\" event-id=\"IG:query\" scope=\"subtree\""
+                    + " max-result-count=\"" + maxResultCount + "\">"
+                    + "<search-class class-name=\"" + searchClass + "\"/>"
+                    + (queryToken != null ? "<query-token>" + queryToken + "</query-token>" : "")
+                    + "<operation-data ig-account-collection-query=\"" + accountCollection + "\""
+                    + " ig-collection-query=\"true\"/>"
+                    + "</query-ex></input></nds>";
         }
-
+        else
+        {
+            // Legacy single-shot plain <query> (unchanged behavior).
+            tokenDoc = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?><nds dtdversion=\"2.0\"><input><query class-name=\""+searchClass+"\" event-id=\"IG:query\" scope=\"subtree\"><search-class class-name=\""+searchClass+"\"/><operation-data ig-account-collection-query=\"false\" ig-collection-query=\"true\"/></query></input></nds>";
+            if (accountCollection)
+            {
+                tokenDoc = tokenDoc.replace("ig-account-collection-query=\"false\"", "ig-account-collection-query=\"true\"");
+            }
+        }
 
         LOGGER.debug("Query: " + tokenDoc);
-        try
+        return tokenDoc.getBytes(StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Splice a {@code <query-token>} into a custom {@code <query-ex>} document for a
+     * continuation page. Returns the input unchanged (with a warning) if the custom
+     * query is not a {@code <query-ex>}.
+     */
+    private static String injectQueryToken(String queryXml, String token)
+    {
+        String tokenEl = "<query-token>" + token + "</query-token>";
+        int idx = queryXml.indexOf("</query-ex>");
+        if (idx < 0)
         {
-
-            return tokenDoc.getBytes(StandardCharsets.UTF_8);
-
-        } catch (Exception e)
-        {
-            e.printStackTrace();
-            LOGGER.error("Error parsing query: " + e.getLocalizedMessage());
-            throw new DaaSException("invalid custom query: " + e.getLocalizedMessage());
-
+            LOGGER.warn("Custom query is not a <query-ex>; cannot resume paging with a query-token");
+            return queryXml;
         }
-
-
+        return queryXml.substring(0, idx) + tokenEl + queryXml.substring(idx);
     }
 
     /**
