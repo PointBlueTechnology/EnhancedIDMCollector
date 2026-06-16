@@ -22,6 +22,8 @@ import com.novell.nds.dirxml.ldap.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import javax.naming.NameNotFoundException;
@@ -39,6 +41,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.NoSuchElementException;
 
 public class DirXMLClient {
@@ -103,6 +106,59 @@ public class DirXMLClient {
             LOGGER.error("Error submitting XDS command: " + lex.getMessage());
             throw new DaaSException(lex);
         }
+    }
+
+    /**
+     * Asks the driver whether it supports {@code <query-ex>} chunked queries.
+     * <p>
+     * This issues the standard {@code __driver_identification_class__} query and
+     * looks for a {@code query-ex-supported} attribute with value {@code true} —
+     * the same capability the engine reads from a shim's driver identification.
+     * Any failure (driver doesn't answer, attribute absent, parse error) is
+     * treated as "not supported" so the collector safely falls back to a plain
+     * {@code <query>}.
+     *
+     * @return true only if the driver explicitly advertises query-ex support.
+     */
+    public boolean driverSupportsQueryEx() {
+        try {
+            String idQuery = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                    + "<nds dtdversion=\"2.0\"><input>"
+                    + "<query event-id=\"query-ex-detect\" scope=\"entry\">"
+                    + "<search-class class-name=\"__driver_identification_class__\"/>"
+                    + "</query></input></nds>";
+            byte[] response = submitXDSCommand(idQuery.getBytes(StandardCharsets.UTF_8));
+            boolean supported = parseQueryExSupported(new String(response, StandardCharsets.UTF_8));
+            LOGGER.debug("Driver " + this.m_driverDn + " query-ex-supported=" + supported);
+            return supported;
+        } catch (Exception e) {
+            LOGGER.warn("Could not determine driver query-ex support; assuming not supported: "
+                    + e.getLocalizedMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Parse a driver-identification response for {@code query-ex-supported=true}.
+     * Exposed so it can be unit-tested without an LDAP connection.
+     */
+    public static boolean parseQueryExSupported(String xml) throws ParserConfigurationException, SAXException, IOException {
+        DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+        docFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        docFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        Document doc = docFactory.newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+        NodeList attrs = doc.getElementsByTagName("attr");
+        for (int i = 0; i < attrs.getLength(); i++) {
+            Element attr = (Element) attrs.item(i);
+            if ("query-ex-supported".equals(attr.getAttribute("attr-name"))) {
+                NodeList values = attr.getElementsByTagName("value");
+                if (values.getLength() > 0) {
+                    return "true".equalsIgnoreCase(values.item(0).getTextContent().trim());
+                }
+            }
+        }
+        return false;
     }
 
     /**

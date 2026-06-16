@@ -17,6 +17,7 @@
 package com.pointbluetech.ida.collector.idm.entitlement.offline;
 
 import com.pointbluetech.ida.collector.idm.entitlement.Collector;
+import com.pointbluetech.ida.collector.idm.entitlement.DirXMLClient;
 import com.pointbluetech.ida.collector.idm.entitlement.ResultParser;
 import com.pointbluetech.ida.collector.idm.entitlement.ServiceParams;
 import org.codehaus.jettison.json.JSONArray;
@@ -83,6 +84,23 @@ public class QueryExPagingTest {
         ResultParser p2 = new ResultParser();
         p2.parse(complete, sp);
         check("no <query-token> yields null (collection complete)", p2.getQueryToken() == null);
+
+        // --- driver capability detection (auto mode) -----------------------
+        String idSupported = "<nds><output>"
+                + "<instance class-name=\"__driver_identification_class__\">"
+                + "<attr attr-name=\"driver-id\"><value>PBClaimsCenter</value></attr>"
+                + "<attr attr-name=\"query-ex-supported\"><value>true</value></attr>"
+                + "</instance></output></nds>";
+        check("detects query-ex-supported=true", DirXMLClient.parseQueryExSupported(idSupported));
+
+        String idFalse = idSupported.replace("<value>true</value>", "<value>false</value>");
+        check("respects query-ex-supported=false", !DirXMLClient.parseQueryExSupported(idFalse));
+
+        String idAbsent = "<nds><output>"
+                + "<instance class-name=\"__driver_identification_class__\">"
+                + "<attr attr-name=\"driver-id\"><value>LegacyDriver</value></attr>"
+                + "</instance></output></nds>";
+        check("absent attribute -> not supported", !DirXMLClient.parseQueryExSupported(idAbsent));
 
         System.out.println(fails == 0 ? "\nALL PASS" : "\n" + fails + " FAILED");
         if (fails != 0) {

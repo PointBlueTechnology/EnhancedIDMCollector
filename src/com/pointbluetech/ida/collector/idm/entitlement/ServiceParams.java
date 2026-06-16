@@ -33,6 +33,7 @@ public class ServiceParams {
     private static final String PORT_PARAM = "port";
 
     private static final String PAGE_SIZE_LIMIT = "page-size-limit";
+    private static final String QUERY_EX_MODE = "query-ex";
     private static final String SEARCH_CLASS = "dxml-search-class";
     private static final String DRIVER_NAME = "driver-name";
     private static final String ENT_NAME = "entitlement_dn";
@@ -54,6 +55,8 @@ public class ServiceParams {
     private int pageSizeLimit;
 
     private String customQuery;
+
+    private String queryExMode;
 
     //public boolean accountCollection = false;
 
@@ -119,6 +122,11 @@ public class ServiceParams {
 
         this.customQuery = CommonImpl.getServiceParamString(jsonRequest, CUSTOM_QUERY, null);
         LOGGER.debug("customQuery: " + customQuery);
+
+        // query-ex chunking: auto (use it when the driver advertises support),
+        // on (force), or off (always plain <query>). Default auto.
+        this.queryExMode = CommonImpl.getServiceParamString(jsonRequest, QUERY_EX_MODE, "auto");
+        LOGGER.debug("queryExMode: " + queryExMode);
 
         setDriverName(CommonImpl.validateServiceParamString(jsonRequest, DRIVER_NAME));
         LOGGER.debug("driverName: " + driverName);
@@ -202,6 +210,14 @@ public class ServiceParams {
 
     public String getCustomQuery() {
         return customQuery;
+    }
+
+    /**
+     * @return query-ex mode: {@code "auto"} (default, detect from the driver),
+     *         {@code "on"} (force query-ex), or {@code "off"} (force plain query).
+     */
+    public String getQueryExMode() {
+        return queryExMode;
     }
 
     public String getIdmAccountID() {

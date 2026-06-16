@@ -66,6 +66,9 @@ public class Collector {
     private String m_searchClass;
     private String m_customQuery;
     private boolean m_accountCollection;
+    /** Driver query-ex capability, detected once after the connection is open. */
+    private boolean m_capsResolved = false;
+    private boolean m_driverSupportsQueryEx = false;
 
 
     public final void setCredentials(String user, String password)
@@ -157,9 +160,9 @@ public class Collector {
                     m_serviceParams.getReadTimeout());
         }
 
-        // Paging is opt-in: enabled only when the view sets a positive
-        // page-size-limit. When disabled, behavior is the legacy single <query>.
-        boolean paged = m_serviceParams.getPageSizeLimit() > 0;
+        // Decide whether to page. In "auto" mode (the default) we ask the driver
+        // once whether it supports query-ex; "on"/"off" force the choice.
+        boolean paged = useQueryEx();
         int maxResultCount = paged ? effectivePageSize() : 0;
 
         byte[] queryXDS = getQuery(m_searchClass, m_customQuery, m_accountCollection,
@@ -192,6 +195,36 @@ public class Collector {
 
         }
         return results;
+    }
+
+    /**
+     * Decide whether this collection should use {@code <query-ex>} chunking.
+     * <ul>
+     *   <li>{@code off} - never; always the legacy plain {@code <query>}.</li>
+     *   <li>{@code on}  - always (the driver is assumed query-ex capable).</li>
+     *   <li>{@code auto} (default) - detect once by asking the driver whether it
+     *       advertises {@code query-ex-supported}; cached for the collection.</li>
+     * </ul>
+     */
+    private boolean useQueryEx()
+    {
+        String mode = m_serviceParams.getQueryExMode();
+        if ("off".equalsIgnoreCase(mode))
+        {
+            return false;
+        }
+        if ("on".equalsIgnoreCase(mode))
+        {
+            return true;
+        }
+        // auto: probe the driver once, then reuse the answer for every page.
+        if (!m_capsResolved)
+        {
+            m_driverSupportsQueryEx = udClient.driverSupportsQueryEx();
+            m_capsResolved = true;
+            LOGGER.debug("Auto query-ex: driver supports query-ex = " + m_driverSupportsQueryEx);
+        }
+        return m_driverSupportsQueryEx;
     }
 
     /**
