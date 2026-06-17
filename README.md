@@ -98,14 +98,106 @@ This release requires LDAPS and does not validate the LDAP server certificate by
 
 ## Build instructions
 
-The following dependencies are required to build the project:
+The project builds with [Apache Maven](https://maven.apache.org/) and a JDK 11 or newer. The build
+targets Java 11 bytecode (`maven.compiler.release=11`).
 
-* Daas-SDKServer.jar
-* dirxml_misc.jar
-* jettison-1.3.7.jar
-* ldap.jar
-* logging-common-1.4.2-57.jar
-* slf4j-api-1.7.22.jar
-* XDS-4.8.0.0.jar
+### Quick start
 
-All except the Daas SDK are available from IG 4.2. The Daas SDK is hard to find but it is linked from the [IG 3.6 release notes](https://www.netiq.com/documentation/identity-governance-36/releasenotes/data/releasenotes.html#t45a9l5omsw0). You can satisfy the dependencies from the SDK with additional jars from IG 4.2 if you need to.
+```sh
+# 1. One-time: install the proprietary jars into the project-local repo (see below)
+./install-local-deps.sh
+
+# 2. Build
+mvn clean package
+```
+
+The build produces `target/EnhancedEntitlementCollector.jar`.
+
+### Project layout
+
+The project uses the standard Maven directory layout:
+
+| Path | Contents |
+| --- | --- |
+| `src/main/java` | Collector and fulfillment source |
+| `src/main/resources` | Runtime JSON resources bundled into the jar |
+| `src/test/java` | Offline `main()`-based test jigs (see [below](#running-the-offline-test-jigs)) |
+| `src/test/resources` | Fixtures used by the jigs |
+| `repo/` | Project-local Maven repository (see [Dependencies](#dependencies)) |
+| `install-local-deps.sh` | Installs the proprietary jars into `repo/` |
+
+### Dependencies
+
+All dependencies resolve from a project-local Maven repository under `./repo` — the build does **not**
+require Maven Central for the application's own dependencies (Maven still downloads its own build
+plugins from Central on first run).
+
+The open-source dependencies (`org.slf4j:slf4j-api`, `org.codehaus.jettison:jettison`) are committed
+to `./repo`. The proprietary OpenText/NetIQ jars are **not** redistributable and are git-ignored, so
+you must install them locally once before building:
+
+| Coordinate | Jar |
+| --- | --- |
+| `com.opentext.ig:daas-sdkserver:3.6.1` | DaaS-SDKServer.jar |
+| `com.netiq.dirxml:xds:4.8.0.0` | XDS-4.8.0.0.jar |
+| `com.netiq.dirxml:dirxml-misc:4.8.3.0` | dirxml_misc.jar |
+| `com.netiq.ism:logging-common:1.4.2-57` | logging-common-1.4.2-57.jar |
+| `com.novell:ldap:1.0` | ldap.jar |
+
+All except the DaaS SDK are available from IG 4.2. The DaaS SDK is hard to find but it is linked from
+the [IG 3.6 release notes](https://www.netiq.com/documentation/identity-governance-36/releasenotes/data/releasenotes.html#t45a9l5omsw0).
+You can satisfy the dependencies from the SDK with additional jars from IG 4.2 if you need to.
+
+All dependencies are declared with `provided` scope: they are supplied by the IG/IDM runtime and are
+therefore **not** bundled into the collector jar.
+
+### Installing the proprietary jars
+
+Place the jars listed above in a directory (default `~/Dev/igCollectorDependencies`) and run:
+
+```sh
+./install-local-deps.sh [SOURCE_DIR]
+```
+
+The script installs each jar into `./repo` under the coordinates the build expects. You only need to
+do this once per checkout (or whenever a dependency version changes). The script is idempotent and
+also reinstalls the open-source jars, which is harmless.
+
+### Building
+
+```sh
+mvn clean package
+```
+
+The resulting `target/EnhancedEntitlementCollector.jar` contains the compiled collector classes and
+the three runtime JSON resources. It carries a `Class-Path` manifest entry referencing the dependency
+jars by file name, so at runtime those jars must sit alongside `EnhancedEntitlementCollector.jar` in
+the IG collector library directory (the IG/IDM runtime provides them).
+
+### Running the offline test jigs
+
+The classes under `src/test/java` are standalone `main()`-based diagnostic jigs, not JUnit tests, so
+`mvn test` compiles them but does not execute them. Run a jig from your IDE, or from the command line
+once the project has been built, for example the query-ex paging regression jig:
+
+```sh
+mvn -q dependency:build-classpath -Dmdep.outputFile=target/cp.txt
+java -cp "target/classes:target/test-classes:src/test/resources:$(cat target/cp.txt)" \
+  com.pointbluetech.ida.collector.idm.entitlement.offline.QueryExPagingTest
+```
+
+### Importing into an IDE
+
+The project is a standard Maven project. In IntelliJ IDEA, choose **Open** and select `pom.xml`
+(or **File ▸ New ▸ Project from Existing Sources ▸ Maven**). The IDE generates its own module files;
+they are intentionally not committed.
+
+### Producing a release
+
+Binary builds are published on the [GitHub Releases page](https://github.com/PointBlueTechnology/EnhancedIDMCollector/releases).
+To cut a release, build the jar and attach it to the tagged release:
+
+```sh
+mvn clean package
+gh release upload <tag> target/EnhancedEntitlementCollector.jar
+```

@@ -1,3 +1,16 @@
+### Maven ###
+target/
+# Legacy IntelliJ artifact build output
+build/
+
+# Project-local Maven repository: open-source jars under repo/org are committed;
+# the proprietary OpenText/NetIQ jars are not redistributable and must be installed
+# locally via ./install-local-deps.sh (see README "Build instructions").
+/repo/com/
+# Local-install cache artifacts (irrelevant when ./repo is used as a remote file repo)
+/repo/**/_remote.repositories
+/repo/**/maven-metadata-local.xml
+
 ### IntelliJ IDEA ###
 out/
 !**/src/main/**/out/
