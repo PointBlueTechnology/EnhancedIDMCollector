@@ -26,7 +26,7 @@ fi
 # coordinate|file mappings: groupId:artifactId:version|jarFileName
 DEPS=(
   "org.slf4j:slf4j-api:1.7.22|slf4j-api-1.7.22.jar"
-  "org.codehaus.jettison:jettison:1.3.7|jettison-1.3.7.jar"
+  "org.codehaus.jettison:jettison:1.5.6|jettison-1.5.6.jar"
   "com.opentext.ig:daas-sdkserver:3.6.1|DaaS-SDKServer.jar"
   "com.netiq.dirxml:xds:4.8.0.0|XDS-4.8.0.0.jar"
   "com.netiq.dirxml:dirxml-misc:4.8.3.0|dirxml_misc.jar"
