@@ -30,10 +30,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class IDMEntitlementCollectionService implements IDaaSService, IDataSourceService {
     static final Logger LOGGER = LoggerFactory.getLogger(IDMEntitlementCollectionService.class.getName());
-    private static final Map<String, Collector> g_collections = new ConcurrentHashMap<>();
+    private static final Map<String, Session> g_collections = new ConcurrentHashMap<>();
     private boolean m_cancel = false;
 
    private Collector m_collector = null;
@@ -41,17 +42,131 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
    private ServiceParams serviceParams = null;
 
     /**
+     * A cached in-flight chunked collection: the {@link Collector} (which owns an
+     * open LDAP connection) plus the time it was last touched.
+     * <p>
+     * Identity Governance abandons a batched collection after {@code chunk-request-ttl}
+     * seconds of idle time, but it has no way to tell us it did so. Without an
+     * expiry of our own, every collection that times out mid-run strands its
+     * Collector in this map forever, holding an eDirectory connection open — so
+     * each timeout makes the next collection more likely to time out too.
+     */
+    private static final class Session
+    {
+        final Collector collector;
+        final long ttlNanos;
+        volatile long lastAccessNanos;
+
+        Session(Collector collector, long ttlNanos)
+        {
+            this.collector = collector;
+            this.ttlNanos = ttlNanos;
+            touch();
+        }
+
+        void touch()
+        {
+            this.lastAccessNanos = System.nanoTime();
+        }
+
+        boolean isExpired(long nowNanos)
+        {
+            return (nowNanos - lastAccessNanos) > ttlNanos;
+        }
+    }
+
+    /**
      * This method shuts down the service.
-     * It first logs that it is in the shutdown method.
-     * If the Collector object is not null, it calls the shutdown method on the Collector.
+     * It releases the current Collector and any collectors still cached for
+     * in-flight chunked collections, so no LDAP connections are left open.
      */
     @Override
     public void shutdown() {
         LOGGER.debug("In shutdown...");
+        for (String token : g_collections.keySet())
+        {
+            releaseSession(token);
+        }
         if (m_collector != null)
         {
-            m_collector.shutdown();
+            closeQuietly(m_collector);
+            m_collector = null;
         }
+    }
+
+    /**
+     * Release a cached collection session and close its LDAP connection.
+     * A no-op for a null/unknown token.
+     */
+    private static void releaseSession(String token)
+    {
+        if (token == null || token.isEmpty())
+        {
+            return;
+        }
+        Session session = g_collections.remove(token);
+        if (session != null)
+        {
+            LOGGER.debug("Releasing collection session " + token);
+            closeQuietly(session.collector);
+        }
+    }
+
+    /**
+     * Shut a Collector down without letting a cleanup failure mask the real error.
+     * Collector.shutdown() is idempotent, so calling this on an already-closed
+     * collector is safe.
+     */
+    private static void closeQuietly(Collector collector)
+    {
+        if (collector == null)
+        {
+            return;
+        }
+        try
+        {
+            collector.shutdown();
+        }
+        catch (Exception e)
+        {
+            LOGGER.warn("Error releasing collector resources: " + e.getLocalizedMessage());
+        }
+    }
+
+    /**
+     * Drop any cached collection that Identity Governance has clearly abandoned,
+     * closing its LDAP connection.
+     */
+    private static void evictExpiredSessions()
+    {
+        long now = System.nanoTime();
+        for (Map.Entry<String, Session> entry : g_collections.entrySet())
+        {
+            Session session = entry.getValue();
+            // remove(key, value) so we never evict a session another thread has
+            // just replaced under the same token.
+            if (session.isExpired(now) && g_collections.remove(entry.getKey(), session))
+            {
+                LOGGER.warn("Collection session " + entry.getKey()
+                        + " exceeded its idle timeout and was abandoned; releasing its LDAP connection.");
+                closeQuietly(session.collector);
+            }
+        }
+    }
+
+    /**
+     * How long we hold an idle collection before reclaiming it. Deliberately
+     * later than IG's own {@code chunk-request-ttl} so we can never reclaim a
+     * session IG still considers live.
+     */
+    private long sessionGraceNanos()
+    {
+        int ttl = (serviceParams != null) ? serviceParams.getCollectionTtlSecs() : 60;
+        if (ttl <= 0)
+        {
+            ttl = 60;
+        }
+        return TimeUnit.SECONDS.toNanos(Math.max(2L * ttl, ttl + 60L));
     }
 
     /**
@@ -122,6 +237,11 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
         JSONObject resObj = executeJSONChunkRequest(jsonObject, null, 1);
         try
         {
+            // A view test only ever reads the first page. If the driver signalled
+            // more, nothing will ever come back for the rest of it, so release the
+            // session here instead of leaking its connection until the sweep runs.
+            releaseSession(resObj.optString(CommonImpl.MORE_TOKEN, null));
+
             JSONArray results = resObj.getJSONArray("Results");
             if(results.length() > 0)
             {
@@ -171,14 +291,29 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
     public JSONObject executeJSONChunkRequest(JSONObject jsonRequest, String token, int chunkSize) throws DaaSException {
         String newToken = token;
 
-        try
+        if (LOGGER.isDebugEnabled())
         {
-            LOGGER.debug(jsonRequest.toString(2));
-
-        }catch (JSONException je)
-        {
-            throw new DaaSException(je, CommonImpl.TYPE_DAAS_GENERAL);
+            try
+            {
+                // Copy before redacting so we don't mutate Identity Governance's
+                // request; the request carries the collection password in the clear.
+                JSONObject loggable = new JSONObject(jsonRequest.toString());
+                if (loggable.has(CommonImpl.DAAS_AUTH_ATTR))
+                {
+                    loggable.put(CommonImpl.DAAS_AUTH_ATTR, "****");
+                }
+                LOGGER.debug(loggable.toString(2));
+            }catch (JSONException je)
+            {
+                throw new DaaSException(je, CommonImpl.TYPE_DAAS_GENERAL);
+            }
         }
+
+        // Reclaim anything Identity Governance abandoned on an earlier run before
+        // we add another connection of our own.
+        evictExpiredSessions();
+
+        Session session;
 
         try
         {
@@ -191,6 +326,10 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
 
                 LOGGER.debug("searchClass: "+ serviceParams.getSearchClass());
 
+                // A cancel applies to one collection, not to every collection this
+                // service instance handles afterwards.
+                m_cancel = false;
+
                 // Initialize a new collector for chunk request
                 m_collector = new Collector(serviceParams);
                 m_collector.setCollectionPageSize(chunkSize);
@@ -201,17 +340,30 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
                 if (jsonRequest.has(CommonImpl.DAAS_AUTH_ATTR))
                 {
                     LOGGER.debug("Setting credentials1");
-                    String authInfo = jsonRequest.getString(CommonImpl.DAAS_AUTH_ATTR);
-                    System.out.println("authInfo: "+authInfo);
-                    setConnectorCredentials(authInfo);
+                    setConnectorCredentials(jsonRequest.getString(CommonImpl.DAAS_AUTH_ATTR));
                 }
-                g_collections.put(newToken, m_collector);
+                session = new Session(m_collector, sessionGraceNanos());
+                g_collections.put(newToken, session);
 
             }
             else
             {
                 // Get the existing Collector
-                m_collector = g_collections.get(token);
+                session = g_collections.get(token);
+
+                if (session == null)
+                {
+                    // The session was reclaimed after IG stopped asking for pages.
+                    // Fail loudly rather than throwing an opaque NPE below.
+                    throw new DaaSException("Collection session " + token
+                            + " is no longer active; it exceeded the configured "
+                            + CommonImpl.COLLECTION_TTL + " idle timeout. Raise that value "
+                            + "or reduce the collection page size.",
+                            CommonImpl.TYPE_INVALID_REQUEST, CommonImpl.STATUS_ERROR);
+                }
+
+                session.touch();
+                m_collector = session.collector;
 
                 if (jsonRequest.has(CommonImpl.CANCEL))
                 {
@@ -227,12 +379,25 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
             // If requests have been canceled, clean up and return
             if (m_cancel)
             {
+                LOGGER.debug("Collection canceled.  Release Collector");
+                releaseSession(newToken);
                 m_collector = null;
-                g_collections.remove(newToken);
                 return resObj;
             }
 
-            JSONArray results = m_collector.getChunkResults(jsonRequest);
+            JSONArray results;
+            try
+            {
+                results = m_collector.getChunkResults(jsonRequest);
+            }
+            catch (DaaSException | RuntimeException e)
+            {
+                // A failed page ends the collection; don't strand its connection
+                // waiting for the idle sweep to notice.
+                releaseSession(newToken);
+                m_collector = null;
+                throw e;
+            }
 
             // Build a standard DaaS reply
             int count = results.length();
@@ -242,15 +407,19 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
 
             if (m_collector.hasMore())
             {
-                // cache/re-cache the collector if still needed
+                // keep the collector cached, and reset its idle clock
                 resObj.put(CommonImpl.MORE_TOKEN, newToken);
-                g_collections.put(newToken, m_collector);
+                session.touch();
+                g_collections.put(newToken, session);
             }
             else
             {
-                // Release resources
+                // Release resources. The Collector closes its own connection when a
+                // paged collection runs out of pages, but a legacy single-shot
+                // collection never does, so close it here either way.
                 LOGGER.debug("All results obtained.  Release Collector");
-                g_collections.remove(newToken);
+                releaseSession(newToken);
+                m_collector = null;
             }
 
             resObj.put(CommonImpl.RESULTS, results);

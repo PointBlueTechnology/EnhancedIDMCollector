@@ -83,14 +83,15 @@ public class DirXMLClient {
      */
     public byte[] submitXDSCommand(byte[] xds) throws DaaSException {
         try {
-            LOGGER.debug("submitXDSCommand: " + this.m_driverDn + " : " + this.m_ldapReadTimeout + " : " + xds.length);
-            //System.out.println(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
-            //System.out.println(new String(xds));
-            LOGGER.debug(new String(xds));
+            // Guarded: the request document can be multi-megabyte, and Java builds
+            // the concatenated argument whether or not debug logging is enabled.
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("submitXDSCommand: " + this.m_driverDn + " : " + this.m_ldapReadTimeout + " : " + xds.length);
+                LOGGER.debug(new String(xds, StandardCharsets.UTF_8));
+            }
             //TODO: had to use 1 for timeout to get it to work? figure out why
 
             SubmitCommandRequest request = new SubmitCommandRequest(this.m_driverDn, 1, xds);
-            LOGGER.debug(request.toString());
             if (!this.isDriverRunning()) {
                 throw new DaaSException("Driver is not running.");
             } else {
@@ -163,23 +164,34 @@ public class DirXMLClient {
 
     /**
      * This method checks if the driver is running.
-     * It sets up search controls and specifies the attribute to return ("DirXML-State").
-     * It then performs a search on the LDAP context using the driver's distinguished name and the search controls.
-     * The state of the driver is retrieved from the search results and checked if it equals 2 (indicating the driver is running).
+     * It reads the {@code DirXML-State} attribute of the driver object and checks
+     * whether it equals 2 (indicating the driver is running).
+     * <p>
+     * The search is scoped to the driver object itself. A subtree search from the
+     * driver DN would walk every child of the driver — both channels, every policy,
+     * every filter — to read one attribute off a single entry, and would leave the
+     * result correct only as long as eDirectory happened to return the base entry
+     * first.
      *
      * @return true if the driver is running, false otherwise.
      * @throws DaaSException if there is an error during the operation.
      */
     public boolean isDriverRunning() throws DaaSException {
         SearchControls sc = new SearchControls();
-        sc.setSearchScope(SearchControls.SUBTREE_SCOPE);
+        sc.setSearchScope(SearchControls.OBJECT_SCOPE);
         sc.setReturningAttributes(new String[]{"DirXML-State"});
 
         NamingEnumeration<SearchResult> results = null;
         try {
             results = this.lctx.search(this.m_driverDn, "(objectClass=*)", sc);
-            int state = Integer.parseInt((String)((SearchResult)results.nextElement()).getAttributes().get("DirXML-State").get());
-            return state == DRIVER_STATE_RUNNING;
+            Attributes attrs = ((SearchResult) results.nextElement()).getAttributes();
+            Attribute state = (attrs != null) ? attrs.get("DirXML-State") : null;
+            if (state == null) {
+                throw new DaaSException("DirXML-State attribute not found on " + this.m_driverDn
+                        + "; check that the DN names a driver object and that the collection "
+                        + "account can read it.");
+            }
+            return Integer.parseInt((String) state.get()) == DRIVER_STATE_RUNNING;
         } catch (NamingException nex) {
             LOGGER.error("Error checking if driver is running", nex);
             throw new DaaSException(nex);
@@ -208,7 +220,9 @@ public class DirXMLClient {
      */
     public byte[] submitXDSEvent(byte[] xds) throws DaaSException {
         try {
-            LOGGER.debug(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug(this.m_driverDn+" : "+this.m_ldapReadTimeout+" : "+xds.length);
+            }
             SubmitEventRequest request = new SubmitEventRequest(this.m_driverDn, this.m_ldapReadTimeout, xds);
 
             if (!this.isDriverRunning()) {

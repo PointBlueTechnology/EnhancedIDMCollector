@@ -127,10 +127,10 @@
       "data_source_connection_parm": false,
       "name": "chunk-request-ttl",
       "display-name": "Batch Collection Session Timeout Value",
-      "description": "Number of seconds of idle time before a batched collection session is terminated",
+      "description": "Number of seconds of idle time before a batched collection session is terminated. Must exceed the time the driver needs to produce a single page; raise this for large groups with many members.",
       "data-type": "numeric",
       "required": true,
-      "default-value": 60
+      "default-value": 300
     },
     {
       "data_source_connection_parm": false,

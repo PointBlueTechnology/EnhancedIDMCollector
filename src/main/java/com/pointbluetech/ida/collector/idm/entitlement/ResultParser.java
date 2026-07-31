@@ -62,13 +62,16 @@ public class ResultParser {
      */
     public  JSONArray parse(String result, ServiceParams params) throws DaaSException {
         try {
-            LOGGER.debug("Parsing result: " + result);
+            // Guarded: `result` is the whole driver response, so the concatenation
+            // duplicates it in memory whether or not debug logging is enabled.
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Parsing result: " + result);
+            }
             InputSource is = new InputSource(new StringReader(result));
             SAXParserFactory factory = SAXParserFactory.newInstance();
             SAXParser saxParser = factory.newSAXParser();
 
             QueryResultHandler handler = new QueryResultHandler();
-            InputSource inputSource = new InputSource(new StringReader(result));
 
             handler.setEntitlementDn(params.getEntitlementName());
             handler.setIdmAccountID(params.getIdmAccountID());

@@ -73,8 +73,7 @@ public class Collector {
 
     public final void setCredentials(String user, String password)
     {
-        LOGGER.debug("Setting Credentials");
-        System.out.println("user: " + user + " password: " + password);
+        LOGGER.debug("Setting credentials for user: " + user);
         m_user = user;
         m_password = password;
     }
@@ -120,11 +119,14 @@ public class Collector {
      * @throws DaaSException If there is an error during the operation.
      */
     public JSONArray getChunkResults(JSONObject jsonRequest) throws DaaSException {
-        try{
-        LOGGER.debug("jsonRequest: " + jsonRequest.toString(2));
-        }catch (Exception e)
+        if (LOGGER.isDebugEnabled())
         {
-            LOGGER.error("Error getting jsonRequest", e);
+            try{
+                LOGGER.debug("jsonRequest: " + jsonRequest.toString(2));
+            }catch (Exception e)
+            {
+                LOGGER.error("Error getting jsonRequest", e);
+            }
         }
 
         // Resolve the view's query parameters once, on the first page, and keep
@@ -168,7 +170,9 @@ public class Collector {
         byte[] queryXDS = getQuery(m_searchClass, m_customQuery, m_accountCollection,
                 maxResultCount, paged ? m_idmQueryToken : null);
 
-        LOGGER.debug("Driver running: " + udClient.isDriverRunning());
+        // submitXDSCommand verifies the driver is running before it submits, so
+        // checking here too would cost a second LDAP round trip per page — and the
+        // old logging call made that round trip even with debug logging disabled.
         byte[] response = udClient.submitXDSCommand(queryXDS);
 
         ResultParser parser = new ResultParser();
@@ -187,12 +191,16 @@ public class Collector {
             }
         }
 
-        try{
-        LOGGER.debug("Results: " + results.toString(2));
-        }catch (Exception e)
+        if (LOGGER.isDebugEnabled())
         {
-            LOGGER.error("Error logging results", e);
-
+            // toString(2) pretty-prints the entire page; on a large group collection
+            // that is a multi-megabyte allocation on the critical path.
+            try{
+                LOGGER.debug("Results: " + results.toString(2));
+            }catch (Exception e)
+            {
+                LOGGER.error("Error logging results", e);
+            }
         }
         return results;
     }
@@ -429,7 +437,7 @@ public class Collector {
             env.put(javax.naming.Context.SECURITY_AUTHENTICATION, "simple");
             env.put(javax.naming.Context.SECURITY_PRINCIPAL, loginDN);
             env.put(javax.naming.Context.SECURITY_CREDENTIALS, pwd);
-            LOGGER.debug("Getting LdapCtx: "+env.toString());
+            // NB: do not log `env` — it holds SECURITY_CREDENTIALS in the clear.
             // Construct an LdapContext object.
             ldapCtx = new InitialLdapContext(env, null);
         } catch (NamingException e) {

@@ -45,6 +45,14 @@ public class ServiceParams {
 
     private int readTimeout =  600;
 
+    /**
+     * Idle seconds Identity Governance allows between chunk requests before it
+     * abandons a batched collection ({@code chunk-request-ttl}). We read it only
+     * so the service can expire its own cached collectors — and their LDAP
+     * connections — some time after IG has given up on them.
+     */
+    private int collectionTtlSecs = 60;
+
     private String searchClass;
 
     private String driverName;
@@ -120,6 +128,11 @@ public class ServiceParams {
         this.setReadTimeout(CommonImpl.getServiceParamInt(jsonRequest, "read-timeout-secs", 1).intValue());
         LOGGER.debug("readTimeout: " + readTimeout);
 
+        // Use the DaaS constant rather than a literal so this name cannot drift
+        // away from what the service definition declares.
+        this.collectionTtlSecs = CommonImpl.getServiceParamInt(jsonRequest, CommonImpl.COLLECTION_TTL, 60).intValue();
+        LOGGER.debug("collectionTtlSecs: " + collectionTtlSecs);
+
         this.customQuery = CommonImpl.getServiceParamString(jsonRequest, CUSTOM_QUERY, null);
         LOGGER.debug("customQuery: " + customQuery);
 
@@ -182,6 +195,14 @@ public class ServiceParams {
 
     public int getReadTimeout() {
         return readTimeout;
+    }
+
+    /**
+     * @return the configured {@code chunk-request-ttl} in seconds (idle time
+     *         Identity Governance allows between chunk requests).
+     */
+    public int getCollectionTtlSecs() {
+        return collectionTtlSecs;
     }
 
     public void setHost(String host) {
