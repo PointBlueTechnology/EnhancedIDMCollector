@@ -172,7 +172,70 @@ mvn clean package
 The resulting `target/EnhancedEntitlementCollector.jar` contains the compiled collector classes and
 the three runtime JSON resources. It carries a `Class-Path` manifest entry referencing the dependency
 jars by file name, so at runtime those jars must sit alongside `EnhancedEntitlementCollector.jar` in
-the IG collector library directory (the IG/IDM runtime provides them).
+the IG collector library directory (the IG/IDM runtime provides them). See
+[Deploying](#deploying) for what that means in practice — it is the most common cause of a failed
+connection test.
+
+### Deploying
+
+Copy `EnhancedEntitlementCollector.jar` into the collector library directory of whichever component
+actually runs the collector:
+
+- **Direct connection** — the IG server.
+- **Cloud Bridge** (`Use Cloud Bridge connector? = Yes`) — the **Cloud Bridge Agent (CBA)**, not the
+  IG server. IG holds the service definition and renders the configuration form, but the agent is
+  what loads the classes. A collector deployed only to the IG server will fail here.
+
+#### Dependency jars are referenced by exact filename
+
+All dependencies are `provided` scope, so nothing is bundled. The jar's manifest instead lists each
+one **by file name**:
+
+```
+Class-Path: ldap.jar dirxml_misc.jar XDS-4.8.0.0.jar DaaS-SDKServer.jar
+ jettison-1.5.6.jar slf4j-api-1.7.22.jar logging-common-1.4.2-57.jar
+```
+
+Every one of those files must exist, under exactly that name, in the same directory as
+`EnhancedEntitlementCollector.jar`. The JVM silently ignores a `Class-Path` entry it cannot resolve,
+so a missing or differently-named jar produces no warning — the collector class just fails to link.
+
+The symptom is a connection test that fails with:
+
+> Unable to connect to your server: DaaS connector returned error (485): Service '…' could not be
+> loaded: [POST request failed: … Message: Class
+> `com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService` was not found]
+
+Despite the wording, the class is present in the jar. `IDMEntitlementCollectionService` has
+jettison's `JSONObject` in its own method signatures, so when jettison cannot be resolved the class
+cannot link, and the runtime reports the resulting `NoClassDefFoundError` as a missing class.
+
+To see what an environment actually has:
+
+```sh
+ls -la <collector-lib-dir>/ | grep -iE "jettison|EnhancedEntitlement"
+```
+
+#### jettison 1.5.6 — required when upgrading to 4.5.0.0 or later
+
+Releases up to and including **4.4.0.0** referenced `jettison-1.3.7.jar`, the version the IG and CBA
+runtimes ship, so the entry resolved with no extra work. **4.5.0.0** raised it to
+`jettison-1.5.6.jar` to clear five jettison CVEs, and that file is **not** present on a stock
+runtime. Dropping in the new collector jar without also deploying jettison 1.5.6 breaks it with the
+error above.
+
+The required jar is committed in this repo:
+
+```sh
+cp repo/org/codehaus/jettison/jettison/1.5.6/jettison-1.5.6.jar <collector-lib-dir>/
+```
+
+Restart the IG server or Cloud Bridge Agent afterwards. Leaving the runtime's own
+`jettison-1.3.7.jar` in place is harmless once the manifest points at 1.5.6.
+
+Because jettison is `provided` scope, note that raising its version in `pom.xml` does not by itself
+remediate anything at runtime — the runtime loads whichever jettison jar is on disk. The CVE fix
+only takes effect once 1.5.6 is deployed to each environment.
 
 ### Running the offline test jigs
 
