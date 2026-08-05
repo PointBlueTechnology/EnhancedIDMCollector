@@ -170,72 +170,114 @@ mvn clean package
 ```
 
 The resulting `target/EnhancedEntitlementCollector.jar` contains the compiled collector classes and
-the three runtime JSON resources. It carries a `Class-Path` manifest entry referencing the dependency
-jars by file name, so at runtime those jars must sit alongside `EnhancedEntitlementCollector.jar` in
-the IG collector library directory (the IG/IDM runtime provides them). See
-[Deploying](#deploying) for what that means in practice — it is the most common cause of a failed
-connection test.
+the three runtime JSON resources. All dependencies are `provided` scope, so nothing is bundled — the
+runtime supplies them. See [Deploying](#deploying) for where the jar goes and what has to be true for
+the runtime to load it.
 
 ### Deploying
 
-Copy `EnhancedEntitlementCollector.jar` into the collector library directory of whichever component
-actually runs the collector:
+The jar has to go wherever the classes are actually **loaded**, which is not always where the service
+definition lives:
 
+- **Cloud Bridge** (`Use Cloud Bridge connector? = Yes`) — the **Cloud Bridge Agent (CBA)**. IG holds
+  the service definition and renders the configuration form, but the agent loads the classes. A
+  collector deployed only to the IG server will not work.
 - **Direct connection** — the IG server.
-- **Cloud Bridge** (`Use Cloud Bridge connector? = Yes`) — the **Cloud Bridge Agent (CBA)**, not the
-  IG server. IG holds the service definition and renders the configuration form, but the agent is
-  what loads the classes. A collector deployed only to the IG server will fail here.
 
-#### Dependency jars are referenced by exact filename
+#### Cloud Bridge Agent (container)
 
-All dependencies are `provided` scope, so nothing is bundled. The jar's manifest instead lists each
-one **by file name**:
+The CBA runs as a container. A host directory is bind-mounted to an internal library directory on the
+agent's classpath — commonly `/bridgelib` — and is intended for *additional* jars only; the stock
+`daas-*` connectors and all the shared libraries ship inside the image.
+
+Deploying is therefore: copy the jar to the host directory, make sure the container can read it, and
+restart the agent.
+
+```sh
+cp EnhancedEntitlementCollector.jar <host-lib-dir>/
+podman restart <agent-container>
+```
+
+**The restart is not optional.** A classpath wildcard is expanded once, when the JVM starts. A jar
+added to a running container is visible in the filesystem immediately but invisible to the running
+agent, which makes this especially misleading — you can `ls` the file inside the container and still
+have the agent behave as though it does not exist.
+
+##### SELinux will silently hide newly copied jars
+
+On RHEL and derivatives with podman, files created on the host inside a bind-mounted volume get the
+host's SELinux label. The container process runs as `container_t` and can only access
+`container_file_t`, so a freshly copied jar is unreadable to the agent even though it is plainly
+there. If the mount was created with `:z`/`:Z`, podman relabels at container **start**, so files
+added to a running container keep their host label.
+
+The tell is a listing from inside the container where the new files have no metadata at all:
+
+```
+$ podman exec <agent-container> ls -la /bridgelib
+-rw-r--r--. 1 root root 248507 Jul  8  2025 daas-idmservice.jar
+-?????????? ? ?    ?         ?            ? EnhancedEntitlementCollector.jar
+ls: cannot access '/bridgelib/EnhancedEntitlementCollector.jar': Permission denied
+```
+
+All question marks means `stat()` itself was denied. That is not ordinary Unix permissions — reading
+a file's metadata only needs search permission on the directory, which the container obviously has,
+since it stats every neighbouring jar. A per-file `getattr` denial while the rest of the directory
+lists fine points at SELinux.
+
+Relabel by copying the context from a jar that already works, then restart:
+
+```sh
+chcon --reference=daas-idmservice.jar EnhancedEntitlementCollector.jar
+podman restart <agent-container>
+```
+
+To confirm the diagnosis before reaching for `chcon`:
+
+```sh
+getenforce                                   # Permissive/Disabled ⇒ not SELinux; check ACLs and lsattr
+ls -laZ <host-lib-dir>                       # compare contexts against a working jar
+ausearch -m avc -ts recent                   # the denial itself
+```
+
+##### The symptom this produces
+
+A jar the agent cannot read is indistinguishable, from IG's side, from a jar that was never deployed:
+
+> Unable to connect to your server: DaaS connector returned error (485): Service '…' could not be
+> loaded: [POST request failed: … Message: Class
+> `com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService` was not found]
+
+The class is present in the jar. Work through it in this order — cheapest first:
+
+1. Is the jar in the host directory that is actually bind-mounted? (`podman inspect <c> --format
+   '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'`)
+2. Can the container stat it? (the `ls -la` above)
+3. Has the agent been restarted since the jar landed?
+
+#### The `Class-Path` manifest entry
+
+The jar's manifest names its dependencies by exact file name:
 
 ```
 Class-Path: ldap.jar dirxml_misc.jar XDS-4.8.0.0.jar DaaS-SDKServer.jar
  jettison-1.5.6.jar slf4j-api-1.7.22.jar logging-common-1.4.2-57.jar
 ```
 
-Every one of those files must exist, under exactly that name, in the same directory as
-`EnhancedEntitlementCollector.jar`. The JVM silently ignores a `Class-Path` entry it cannot resolve,
-so a missing or differently-named jar produces no warning — the collector class just fails to link.
+Those are *relative* URLs resolved against the location of the collector jar itself, so they only
+resolve for files sitting in the same directory. The JVM silently skips an entry it cannot resolve —
+no warning, no error — so a missing or differently-named jar shows up later as a link failure rather
+than anything that names the real problem.
 
-The symptom is a connection test that fails with:
+**On a container CBA this entry is inert**: every library it names is already on the agent's
+classpath from inside the image, so nothing needs to sit beside the collector jar and the version in
+the filename does not matter. It matters only where the collector is loaded by a classloader that
+does not already supply those dependencies.
 
-> Unable to connect to your server: DaaS connector returned error (485): Service '…' could not be
-> loaded: [POST request failed: … Message: Class
-> `com.pointbluetech.ida.collector.idm.entitlement.IDMEntitlementCollectionService` was not found]
-
-Despite the wording, the class is present in the jar. `IDMEntitlementCollectionService` has
-jettison's `JSONObject` in its own method signatures, so when jettison cannot be resolved the class
-cannot link, and the runtime reports the resulting `NoClassDefFoundError` as a missing class.
-
-To see what an environment actually has:
-
-```sh
-ls -la <collector-lib-dir>/ | grep -iE "jettison|EnhancedEntitlement"
-```
-
-#### jettison 1.5.6 — required when upgrading to 4.5.0.0 or later
-
-Releases up to and including **4.4.0.0** referenced `jettison-1.3.7.jar`, the version the IG and CBA
-runtimes ship, so the entry resolved with no extra work. **4.5.0.0** raised it to
-`jettison-1.5.6.jar` to clear five jettison CVEs, and that file is **not** present on a stock
-runtime. Dropping in the new collector jar without also deploying jettison 1.5.6 breaks it with the
-error above.
-
-The required jar is committed in this repo:
-
-```sh
-cp repo/org/codehaus/jettison/jettison/1.5.6/jettison-1.5.6.jar <collector-lib-dir>/
-```
-
-Restart the IG server or Cloud Bridge Agent afterwards. Leaving the runtime's own
-`jettison-1.3.7.jar` in place is harmless once the manifest points at 1.5.6.
-
-Because jettison is `provided` scope, note that raising its version in `pom.xml` does not by itself
-remediate anything at runtime — the runtime loads whichever jettison jar is on disk. The CVE fix
-only takes effect once 1.5.6 is deployed to each environment.
+Because the dependencies are `provided` scope, note that raising one in `pom.xml` does not remediate
+anything at runtime — the runtime loads whatever it ships. The jettison CVE fixes in the 1.5.x line,
+for instance, only take effect if the CBA image itself is updated; adding `jettison-1.5.6.jar` to the
+additional-jars directory does not displace the copy inside the image.
 
 ### Running the offline test jigs
 
