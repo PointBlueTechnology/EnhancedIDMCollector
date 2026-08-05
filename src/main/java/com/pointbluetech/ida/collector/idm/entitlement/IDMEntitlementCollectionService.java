@@ -39,6 +39,9 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
 
    private Collector m_collector = null;
 
+   /** Token of the collection this service instance is currently driving, if any. */
+   private String m_token = null;
+
    private ServiceParams serviceParams = null;
 
     /**
@@ -76,17 +79,22 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
     }
 
     /**
-     * This method shuts down the service.
-     * It releases the current Collector and any collectors still cached for
-     * in-flight chunked collections, so no LDAP connections are left open.
+     * This method shuts down the service, releasing this instance's collection
+     * and its LDAP connection.
+     * <p>
+     * It must only ever touch its <em>own</em> session. {@link #g_collections} is
+     * static and shared by every service instance in the agent, so releasing the
+     * whole map here would close other, still-running collections' LDAP contexts
+     * mid-request — surfacing as {@code CommunicationException: Request N cancelled}
+     * followed by a NullPointerException on the next page. Sessions abandoned by
+     * Identity Governance are reclaimed by {@link #evictExpiredSessions()} instead,
+     * which is idle-time guarded and therefore cannot disturb a live collection.
      */
     @Override
     public void shutdown() {
         LOGGER.debug("In shutdown...");
-        for (String token : g_collections.keySet())
-        {
-            releaseSession(token);
-        }
+        releaseSession(m_token);
+        m_token = null;
         if (m_collector != null)
         {
             closeQuietly(m_collector);
@@ -344,6 +352,7 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
                 }
                 session = new Session(m_collector, sessionGraceNanos());
                 g_collections.put(newToken, session);
+                m_token = newToken;
 
             }
             else
@@ -364,6 +373,7 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
 
                 session.touch();
                 m_collector = session.collector;
+                m_token = token;
 
                 if (jsonRequest.has(CommonImpl.CANCEL))
                 {
@@ -381,6 +391,7 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
             {
                 LOGGER.debug("Collection canceled.  Release Collector");
                 releaseSession(newToken);
+                m_token = null;
                 m_collector = null;
                 return resObj;
             }
@@ -395,6 +406,7 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
                 // A failed page ends the collection; don't strand its connection
                 // waiting for the idle sweep to notice.
                 releaseSession(newToken);
+                m_token = null;
                 m_collector = null;
                 throw e;
             }
@@ -419,6 +431,7 @@ public class IDMEntitlementCollectionService implements IDaaSService, IDataSourc
                 // collection never does, so close it here either way.
                 LOGGER.debug("All results obtained.  Release Collector");
                 releaseSession(newToken);
+                m_token = null;
                 m_collector = null;
             }
 

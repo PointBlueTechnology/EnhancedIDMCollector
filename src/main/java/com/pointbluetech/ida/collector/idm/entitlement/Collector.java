@@ -122,7 +122,14 @@ public class Collector {
         if (LOGGER.isDebugEnabled())
         {
             try{
-                LOGGER.debug("jsonRequest: " + jsonRequest.toString(2));
+                // Copy before redacting so we don't mutate Identity Governance's
+                // request; it carries the collection password in the clear.
+                JSONObject loggable = new JSONObject(jsonRequest.toString());
+                if (loggable.has(CommonImpl.DAAS_AUTH_ATTR))
+                {
+                    loggable.put(CommonImpl.DAAS_AUTH_ATTR, "****");
+                }
+                LOGGER.debug("jsonRequest: " + loggable.toString(2));
             }catch (Exception e)
             {
                 LOGGER.error("Error getting jsonRequest", e);
