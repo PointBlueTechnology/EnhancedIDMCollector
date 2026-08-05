@@ -6,7 +6,7 @@
 
     <groupId>com.pointbluetech.ida</groupId>
     <artifactId>enhanced-entitlement-collector</artifactId>
-    <version>4.5.0.0</version>
+    <version>4.5.1.0</version>
     <packaging>jar</packaging>
 
     <name>Enhanced IDM Collector</name>
